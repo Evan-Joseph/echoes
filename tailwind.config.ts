@@ -1,4 +1,4 @@
-import type {Config} from 'tailwindcss';
+import type { Config } from 'tailwindcss';
 
 export default {
   darkMode: ['class'],
@@ -66,9 +66,9 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "var(--radius)",
-        sm: "var(--radius)",
+        lg: 'var(--radius)',
+        md: 'var(--radius)',
+        sm: 'var(--radius)',
       },
       keyframes: {
         'accordion-down': {

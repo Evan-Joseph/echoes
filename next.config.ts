@@ -1,4 +1,4 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -23,14 +23,17 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'your-supabase-url.supabase.co',
-      }
+      },
     ],
   },
   webpack: (config, { isServer }) => {
     // These are optional dependencies of genkit, we don't need them to be bundled.
-    config.externals.push('@genkit-ai/firebase', '@opentelemetry/exporter-jaeger');
+    config.externals.push(
+      '@genkit-ai/firebase',
+      '@opentelemetry/exporter-jaeger'
+    );
     return config;
-  }
+  },
 };
 
 export default nextConfig;

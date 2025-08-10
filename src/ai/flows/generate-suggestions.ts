@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow to generate conversation suggestions.
@@ -12,9 +11,16 @@ import { z } from 'zod';
 // Define Zod schemas for input and output
 // No input is needed for this flow.
 const GenerateSuggestionsOutputSchema = z.object({
-  suggestions: z.array(z.string()).length(4).describe('An array of exactly 4 diverse and engaging conversation starters.'),
+  suggestions: z
+    .array(z.string())
+    .length(4)
+    .describe(
+      'An array of exactly 4 diverse and engaging conversation starters.'
+    ),
 });
-export type GenerateSuggestionsOutput = z.infer<typeof GenerateSuggestionsOutputSchema>;
+export type GenerateSuggestionsOutput = z.infer<
+  typeof GenerateSuggestionsOutputSchema
+>;
 
 // Define the exported wrapper function
 export async function generateSuggestions(): Promise<GenerateSuggestionsOutput> {

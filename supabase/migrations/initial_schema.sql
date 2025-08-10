@@ -1,7 +1,8 @@
 -- Create a table for public user profiles
-create table users (
+create table profiles (
   id uuid not null references auth.users on delete cascade,
-  "uid" text, -- For potential legacy compatibility, can be removed if not needed
+  openid text unique, -- For WeChat OpenID
+  user_email text, -- For storing the dummy email
   "displayName" text,
   "photoURL" text,
   "createdAt" timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -10,23 +11,23 @@ create table users (
 );
 
 -- Set up Row Level Security (RLS)
-alter table users enable row level security;
+alter table profiles enable row level security;
 
-create policy "Public profiles are viewable by everyone." on users
+create policy "Public profiles are viewable by everyone." on profiles
   for select using (true);
 
-create policy "Users can insert their own profile." on users
+create policy "Users can insert their own profile." on profiles
   for insert with check (auth.uid() = id);
 
-create policy "Users can update own profile." on users
+create policy "Users can update own profile." on profiles
   for update using (auth.uid() = id);
 
 -- This trigger automatically creates a profile for new users.
 create function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.users (id, "uid")
-  values (new.id, new.id::text);
+  insert into public.profiles (id, user_email)
+  values (new.id, new.email);
   return new;
 end;
 $$ language plpgsql security definer;
@@ -43,7 +44,7 @@ create table activities (
     description text,
     category text,
     "coverImageUrl" text,
-    "userId" uuid references public.users(id) on delete set null,
+    "userId" uuid references public.profiles(id) on delete set null,
     status text default 'pending',
     participants jsonb default '[]'::jsonb,
     "createdAt" timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -59,7 +60,7 @@ create policy "Admin can delete activities." on activities for delete using (tru
 -- Check-ins Table
 create table "checkIns" (
     id bigserial primary key,
-    "userId" uuid not null references public.users(id) on delete cascade,
+    "userId" uuid not null references public.profiles(id) on delete cascade,
     content text,
     "isPublic" boolean default false,
     "photoUrl" text,
@@ -82,7 +83,7 @@ create policy "Users can delete their own check-ins." on "checkIns" for delete u
 create table comments (
     id bigserial primary key,
     "checkInId" bigint not null references public."checkIns"(id) on delete cascade,
-    "userId" uuid not null references public.users(id) on delete cascade,
+    "userId" uuid not null references public.profiles(id) on delete cascade,
     content text,
     "createdAt" timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -95,7 +96,7 @@ create policy "Users can delete their own comments." on comments for delete usin
 -- Messages Table
 create table messages (
     id bigserial primary key,
-    "userId" uuid not null references public.users(id) on delete cascade,
+    "userId" uuid not null references public.profiles(id) on delete cascade,
     role text,
     content text,
     data jsonb,
@@ -112,7 +113,7 @@ create policy "Users can delete their own messages." on messages for delete usin
 create table reports (
     id bigserial primary key,
     "checkInId" bigint not null references public."checkIns"(id) on delete cascade,
-    "reportedByUserId" uuid not null references public.users(id) on delete cascade,
+    "reportedByUserId" uuid not null references public.profiles(id) on delete cascade,
     status text default 'pending',
     "createdAt" timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -124,7 +125,7 @@ create policy "Users can create reports." on reports for insert to authenticated
 -- Monthly Reports Table
 create table "monthly_reports" (
     id bigserial primary key,
-    "userId" uuid not null references public.users(id) on delete cascade,
+    "userId" uuid not null references public.profiles(id) on delete cascade,
     year integer,
     month integer,
     summary jsonb,

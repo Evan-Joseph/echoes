@@ -24,9 +24,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className={`${notoSansSC.variable}`}>
       <body className="font-body antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
         <Toaster />
       </body>
     </html>

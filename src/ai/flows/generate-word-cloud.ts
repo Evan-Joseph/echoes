@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow to analyze text and generate word cloud data.
@@ -12,20 +11,34 @@ import { z } from 'zod';
 
 // Define Zod schemas for input and output
 const GenerateWordCloudInputSchema = z.object({
-  checkInContents: z.array(z.string()).describe('An array of user check-in texts to be analyzed.'),
+  checkInContents: z
+    .array(z.string())
+    .describe('An array of user check-in texts to be analyzed.'),
 });
-export type GenerateWordCloudDataInput = z.infer<typeof GenerateWordCloudInputSchema>;
+export type GenerateWordCloudDataInput = z.infer<
+  typeof GenerateWordCloudInputSchema
+>;
 
 const GenerateWordCloudOutputSchema = z.object({
-    words: z.array(z.object({
+  words: z
+    .array(
+      z.object({
         text: z.string().describe('The identified word or phrase.'),
         value: z.number().describe('The frequency or weight of the word.'),
-    })).describe('An array of objects, each representing a word and its frequency for the word cloud.'),
+      })
+    )
+    .describe(
+      'An array of objects, each representing a word and its frequency for the word cloud.'
+    ),
 });
-export type GenerateWordCloudDataOutput = z.infer<typeof GenerateWordCloudOutputSchema>;
+export type GenerateWordCloudDataOutput = z.infer<
+  typeof GenerateWordCloudOutputSchema
+>;
 
 // Define the exported wrapper function
-export async function generateWordCloudData(input: GenerateWordCloudDataInput): Promise<GenerateWordCloudDataOutput> {
+export async function generateWordCloudData(
+  input: GenerateWordCloudDataInput
+): Promise<GenerateWordCloudDataOutput> {
   return generateWordCloudFlow(input);
 }
 
@@ -65,9 +78,9 @@ const generateWordCloudFlow = ai.defineFlow(
   async (input) => {
     // If there are no contents, return an empty array to avoid calling the model unnecessarily.
     if (input.checkInContents.length === 0) {
-        return { words: [] };
+      return { words: [] };
     }
-    
+
     const { output } = await wordCloudPrompt(input);
     return output!;
   }

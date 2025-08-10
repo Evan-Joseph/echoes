@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow to generate a user's monthly growth report.
@@ -12,20 +11,47 @@ import { z } from 'zod';
 
 // Define Zod schemas for input and output
 const GenerateMonthlyReportInputSchema = z.object({
-  checkInContents: z.array(z.string()).describe('An array of user check-in texts from the past month.'),
-  previousReportSummary: z.string().optional().describe('The summary from the previous month\'s report, if available. Use this for context and to show continuity.'),
+  checkInContents: z
+    .array(z.string())
+    .describe('An array of user check-in texts from the past month.'),
+  previousReportSummary: z
+    .string()
+    .optional()
+    .describe(
+      "The summary from the previous month's report, if available. Use this for context and to show continuity."
+    ),
 });
-export type GenerateMonthlyReportInput = z.infer<typeof GenerateMonthlyReportInputSchema>;
+export type GenerateMonthlyReportInput = z.infer<
+  typeof GenerateMonthlyReportInputSchema
+>;
 
 const GenerateMonthlyReportOutputSchema = z.object({
-    summary: z.string().describe("A warm, one-paragraph summary of the user's overall journey this month, identifying key themes or emotional tones."),
-    highlights: z.array(z.string()).length(3).describe("An array of exactly 3 direct quotes from the user's most positive or significant check-ins. These should be verbatim copies of the original content."),
-    suggestions: z.array(z.string()).length(2).describe("An array of exactly 2 actionable, gentle, and encouraging suggestions for the user's growth next month, based on their check-ins."),
+  summary: z
+    .string()
+    .describe(
+      "A warm, one-paragraph summary of the user's overall journey this month, identifying key themes or emotional tones."
+    ),
+  highlights: z
+    .array(z.string())
+    .length(3)
+    .describe(
+      "An array of exactly 3 direct quotes from the user's most positive or significant check-ins. These should be verbatim copies of the original content."
+    ),
+  suggestions: z
+    .array(z.string())
+    .length(2)
+    .describe(
+      "An array of exactly 2 actionable, gentle, and encouraging suggestions for the user's growth next month, based on their check-ins."
+    ),
 });
-export type GenerateMonthlyReportOutput = z.infer<typeof GenerateMonthlyReportOutputSchema>;
+export type GenerateMonthlyReportOutput = z.infer<
+  typeof GenerateMonthlyReportOutputSchema
+>;
 
 // Define the exported wrapper function
-export async function generateMonthlyReport(input: GenerateMonthlyReportInput): Promise<GenerateMonthlyReportOutput> {
+export async function generateMonthlyReport(
+  input: GenerateMonthlyReportInput
+): Promise<GenerateMonthlyReportOutput> {
   return generateMonthlyReportFlow(input);
 }
 
@@ -67,9 +93,9 @@ const generateMonthlyReportFlow = ai.defineFlow(
   async (input) => {
     // If there are not enough contents, return a default or empty state to avoid low-quality AI output.
     if (input.checkInContents.length < 3) {
-        throw new Error("Not enough data for a meaningful report.");
+      throw new Error('Not enough data for a meaningful report.');
     }
-    
+
     const { output } = await monthlyReportPrompt(input);
     return output!;
   }

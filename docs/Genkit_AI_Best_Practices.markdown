@@ -6,12 +6,12 @@
 
 在开发 AI 应用时，以下通用实践适用于 Firebase 和 Node.js 环境：
 
-| **实践** | **描述** | **示例/说明** |
-|----------|----------|---------------|
-| **环境变量管理** | 使用环境变量存储 API 密钥和其他敏感信息，确保安全性。 | 设置 `GEMINI_API_KEY` 环境变量以访问 Gemini API。 |
-| **TypeScript 使用** | 利用 TypeScript 的类型安全特性，减少运行时错误。 | Genkit 示例代码广泛使用 TypeScript，例如定义工具的输入模式。 |
-| **异步操作优化** | 使用 `async/await` 处理 AI API 调用等异步操作，确保性能。 | 例如，`await ai.generate()` 用于等待模型响应。 |
-| **缓存机制** | 利用 Genkit 的上下文缓存功能，减少重复任务的延迟。 | Gemini 模型支持上下文缓存，适用于频繁引用的长文本。 |
+| **实践**            | **描述**                                                  | **示例/说明**                                                |
+| ------------------- | --------------------------------------------------------- | ------------------------------------------------------------ |
+| **环境变量管理**    | 使用环境变量存储 API 密钥和其他敏感信息，确保安全性。     | 设置 `GEMINI_API_KEY` 环境变量以访问 Gemini API。            |
+| **TypeScript 使用** | 利用 TypeScript 的类型安全特性，减少运行时错误。          | Genkit 示例代码广泛使用 TypeScript，例如定义工具的输入模式。 |
+| **异步操作优化**    | 使用 `async/await` 处理 AI API 调用等异步操作，确保性能。 | 例如，`await ai.generate()` 用于等待模型响应。               |
+| **缓存机制**        | 利用 Genkit 的上下文缓存功能，减少重复任务的延迟。        | Gemini 模型支持上下文缓存，适用于频繁引用的长文本。          |
 
 这些实践为所有 AI 角色提供了坚实的基础，确保开发过程安全、高效且可扩展。
 
@@ -41,7 +41,10 @@
      import { menuSuggestionFlow } from '@/genkit/menuSuggestionFlow';
      async function getMenuItem(formData) {
        const theme = formData.get('theme')?.toString() ?? '';
-       const result = await runFlow<typeof menuSuggestionFlow>({ url: '/api/menuSuggestion', input: { theme } });
+       const result =
+         (await runFlow) <
+         typeof menuSuggestionFlow >
+         { url: '/api/menuSuggestion', input: { theme } };
        return result.menuItem;
      }
      ```
@@ -55,11 +58,11 @@
      const getWeather = ai.defineTool({
        name: 'getWeather',
        description: 'Get the weather for a location',
-       inputSchema: z.object({ location: z.string() })
+       inputSchema: z.object({ location: z.string() }),
      });
      const response = await ai.generate({
        prompt: 'What is the weather in Baltimore?',
-       tools: [getWeather]
+       tools: [getWeather],
      });
      ```
    - **注意**：确保模型支持工具调用（检查 `info.supports.tools` 属性）。
@@ -70,6 +73,7 @@
    - 示例：对于“查看社群”指令，工具调用可直接查询数据库，而 RAG 适合分析大量帖子内容。
 
 **资源**：
+
 - [Genkit Next.js 集成](https://genkit.dev/docs/nextjs/)
 - [Genkit 工具调用](https://genkit.dev/docs/tool-calling/)
 
@@ -86,7 +90,7 @@
      import { ai } from 'genkit';
      const response = await ai.chat({
        model: 'googleai/gemini-2.5-flash',
-       messages: [{ role: 'user', content: 'Recommend some books' }]
+       messages: [{ role: 'user', content: 'Recommend some books' }],
      });
      ```
 
@@ -108,8 +112,15 @@
      function ChatComponent() {
        const [messages, setMessages] = useState([]);
        async function sendMessage(text) {
-         const response = await runFlow({ url: '/api/chat', input: { text, history: messages } });
-         setMessages([...messages, { role: 'user', content: text }, { role: 'model', content: response.text }]);
+         const response = await runFlow({
+           url: '/api/chat',
+           input: { text, history: messages },
+         });
+         setMessages([
+           ...messages,
+           { role: 'user', content: text },
+           { role: 'model', content: response.text },
+         ]);
        }
      }
      ```
@@ -126,6 +137,7 @@
      ```
 
 **资源**：
+
 - [Genkit 聊天会话](https://genkit.dev/docs/chat/)
 
 ## AI 作为内容分析师
@@ -141,7 +153,7 @@
      ```javascript
      const response = await ai.generate({
        model: 'googleai/gemini-2.5-flash',
-       prompt: 'Summarize the following check-in records: [records]'
+       prompt: 'Summarize the following check-in records: [records]',
      });
      ```
 
@@ -152,11 +164,11 @@
      import { z } from 'genkit';
      const ReportSchema = z.object({
        highFrequencyWords: z.array(z.string()),
-       sentimentTrend: z.string()
+       sentimentTrend: z.string(),
      });
      const result = await ai.generate({
        prompt: 'Analyze check-in records: [records]',
-       output: { schema: ReportSchema }
+       output: { schema: ReportSchema },
      });
      ```
 
@@ -164,17 +176,20 @@
    - 提取关键词和频率，生成适合词云的 JSON 数据。
    - 示例：
      ```javascript
-     const WordCloudSchema = z.array(z.object({
-       word: z.string(),
-       frequency: z.number()
-     }));
+     const WordCloudSchema = z.array(
+       z.object({
+         word: z.string(),
+         frequency: z.number(),
+       })
+     );
      const result = await ai.generate({
        prompt: 'Extract keywords and their frequencies from: [records]',
-       output: { schema: WordCloudSchema }
+       output: { schema: WordCloudSchema },
      });
      ```
 
 **资源**：
+
 - [Genkit 模型生成](https://genkit.dev/docs/models/)
 
 ## AI 作为创意建议者
@@ -187,7 +202,9 @@
    - 使用 Genkit 的 Dotprompt 库和 `.prompt` 文件格式管理动态提示词。
    - 示例（`suggestion.prompt`）：
      ```handlebars
-     You are a creative assistant. Suggest a dialogue starter for a conversation about {{topic}}.
+     You are a creative assistant. Suggest a dialogue starter for a conversation
+     about
+     {{topic}}.
      ```
    - 加载提示词：
      ```javascript
@@ -200,9 +217,10 @@
    - 示例：
      ```handlebars
      {{#if topic}}
-     Suggest a creative question about {{topic}}.
+       Suggest a creative question about
+       {{topic}}.
      {{else}}
-     Suggest a general conversation starter.
+       Suggest a general conversation starter.
      {{/if}}
      ```
 
@@ -213,7 +231,7 @@
      const response = await ai.generate({
        prompt: `Suggest a discussion point for a post about hiking.
        Example: For a post about cooking, suggest: "What's your favorite recipe to share with friends?"
-       Example: For a post about music, suggest: "Which song gets you in a great mood?"`
+       Example: For a post about music, suggest: "Which song gets you in a great mood?"`,
      });
      ```
 
@@ -223,11 +241,12 @@
      ```javascript
      const response = await ai.generate({
        prompt: 'Suggest a creative dialogue starter',
-       config: { temperature: 1.4, topK: 50 }
+       config: { temperature: 1.4, topK: 50 },
      });
      ```
 
 **资源**：
+
 - [Genkit Dotprompt 管理](https://genkit.dev/docs/dotprompt/)
 
 ## 总结
@@ -235,6 +254,7 @@
 通过遵循上述最佳实践，开发者可以利用 Firebase Genkit 和 Node.js 高效实现 AI 功能。功能路由器通过工具调用实现精准功能触发，情境对话伙伴通过聊天 API 维护上下文，内容分析师生成结构化数据，创意建议者通过动态提示词激发灵感。结合通用实践（如环境变量管理和 TypeScript），这些方法确保了应用的可靠性、可扩展性和用户友好性。
 
 **参考文献**：
+
 - [Genkit 官方文档](https://genkit.dev/docs/)
 - [Next.js 集成](https://genkit.dev/docs/nextjs/)
 - [工具调用](https://genkit.dev/docs/tool-calling/)

@@ -1,24 +1,39 @@
-
 'use server';
 
-import { z } from "genkit";
-import { ai } from "@/ai/genkit";
-import { NextRequest, NextResponse } from "next/server";
-import { Message } from "@/lib/types";
+import { z } from 'genkit';
+import { ai } from '@/ai/genkit';
+import { NextRequest, NextResponse } from 'next/server';
+import { Message } from '@/lib/types';
 
 // Define the structured output schema for our AI responses.
 // This is the "communication protocol" between the AI and our frontend.
 const MainChatOutputSchema = z.object({
-  responseType: z.enum(['text', 'tool_use', 'fallback'])
-    .describe('The type of response. Use "text" for conversation, "tool_use" for functions, and "fallback" if unsure.'),
-  text: z.string().optional().describe('The conversational text response from the AI. Required if responseType is "text".'),
-  tool: z.object({
-    name: z.enum(['check_in', 'query_activity', 'query_community', 'query_profile'])
-      .describe('The name of the tool to be used.'),
-  }).optional().describe('The tool to be used. Only use if responseType is "tool_use".'),
+  responseType: z
+    .enum(['text', 'tool_use', 'fallback'])
+    .describe(
+      'The type of response. Use "text" for conversation, "tool_use" for functions, and "fallback" if unsure.'
+    ),
+  text: z
+    .string()
+    .optional()
+    .describe(
+      'The conversational text response from the AI. Required if responseType is "text".'
+    ),
+  tool: z
+    .object({
+      name: z
+        .enum([
+          'check_in',
+          'query_activity',
+          'query_community',
+          'query_profile',
+        ])
+        .describe('The name of the tool to be used.'),
+    })
+    .optional()
+    .describe('The tool to be used. Only use if responseType is "tool_use".'),
 });
 export type MainChatOutput = z.infer<typeof MainChatOutputSchema>;
-
 
 // Define the main system prompt for the AI Router.
 // This prompt strictly commands the AI to act as a JSON-based router.
@@ -40,7 +55,6 @@ Available Tools:
 Your response must be in Chinese.
 `;
 
-
 // Standard Next.js API Route handler
 export async function POST(req: NextRequest) {
   try {
@@ -49,7 +63,12 @@ export async function POST(req: NextRequest) {
     // Reconstruct messages for the AI model, including history.
     const messages: any[] = history.map((msg: Message) => ({
       role: msg.role === 'ai' ? 'model' : msg.role,
-      content: [{ text: typeof msg.content === 'string' ? msg.content : `[UI Component]` }]
+      content: [
+        {
+          text:
+            typeof msg.content === 'string' ? msg.content : `[UI Component]`,
+        },
+      ],
     }));
     messages.push({ role: 'user', content: [{ text: prompt }] });
 
@@ -58,31 +77,29 @@ export async function POST(req: NextRequest) {
       system: routerSystemPrompt,
       messages: messages, // Send the full conversation history
       output: {
-          schema: MainChatOutputSchema,
-      }
+        schema: MainChatOutputSchema,
+      },
     });
 
     const output = response.output;
 
     if (!output) {
-      throw new Error("AI did not return a valid structured response.");
+      throw new Error('AI did not return a valid structured response.');
     }
-    
+
     return NextResponse.json(output);
-
-
   } catch (err: any) {
-    console.error("[API Route Error]", err);
+    console.error('[API Route Error]', err);
     return NextResponse.json(
       {
         error: {
-          message: err.message || "An unknown error occurred.",
+          message: err.message || 'An unknown error occurred.',
           stack: err.stack,
           cause: err.cause,
         },
       },
       {
-        status: 500
+        status: 500,
       }
     );
   }

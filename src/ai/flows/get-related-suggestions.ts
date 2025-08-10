@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow to generate a comment from the AI based on a community post.
@@ -12,17 +11,29 @@ import { z } from 'zod';
 
 // Define Zod schemas for input and output
 const GenerateAiCommentInputSchema = z.object({
-  checkInContent: z.string().describe("The full text content of the user's check-in or post."),
+  checkInContent: z
+    .string()
+    .describe("The full text content of the user's check-in or post."),
 });
-export type GenerateAiCommentInput = z.infer<typeof GenerateAiCommentInputSchema>;
+export type GenerateAiCommentInput = z.infer<
+  typeof GenerateAiCommentInputSchema
+>;
 
 const GenerateAiCommentOutputSchema = z.object({
-  commentText: z.string().describe("A friendly, engaging, and thought-provoking comment from the AI, ready to be posted."),
+  commentText: z
+    .string()
+    .describe(
+      'A friendly, engaging, and thought-provoking comment from the AI, ready to be posted.'
+    ),
 });
-export type GenerateAiCommentOutput = z.infer<typeof GenerateAiCommentOutputSchema>;
+export type GenerateAiCommentOutput = z.infer<
+  typeof GenerateAiCommentOutputSchema
+>;
 
 // Define the exported wrapper function
-export async function generateAiComment(input: GenerateAiCommentInput): Promise<GenerateAiCommentOutput> {
+export async function generateAiComment(
+  input: GenerateAiCommentInput
+): Promise<GenerateAiCommentOutput> {
   return generateAiCommentFlow(input);
 }
 
