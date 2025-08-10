@@ -341,7 +341,7 @@ export default function AdminPage() {
 
   React.useEffect(() => {
     if (!isAuthLoading && !user) {
-      router.push('/login');
+      router.push('/'); // Redirect to home if not logged in
       return;
     }
     if (user) {
@@ -395,12 +395,12 @@ export default function AdminPage() {
   }
 
   if (!user) {
+    // The useEffect above will handle the redirect.
+    // This is a fallback state.
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center space-y-4">
-        <p className="text-muted-foreground">请先登录以访问管理后台。</p>
-        <Button asChild>
-          <Link href="/login">前往登录</Link>
-        </Button>
+        <p className="text-muted-foreground">正在跳转...</p>
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
   }

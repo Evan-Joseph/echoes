@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await supabaseLogout();
     setUser(null);
-    router.push('/login');
+    router.push('/'); // Redirect to home page after logout
   };
 
   return (

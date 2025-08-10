@@ -188,7 +188,7 @@ export default function UserDetailPage() {
   React.useEffect(() => {
     if (isAuthLoading) return;
     if (!user) {
-      router.push('/login');
+      router.push('/'); // Redirect to home if not logged in
       return;
     }
 

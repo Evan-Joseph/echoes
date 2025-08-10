@@ -5,6 +5,7 @@ import ChatLayout from '@/components/echoes/chat-layout';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import Image from 'next/image';
 
 function AppSkeleton() {
   return (
@@ -40,14 +41,34 @@ export default function Home() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push('/login');
+      // No longer redirecting. The component will now handle the unauthenticated state.
     }
   }, [user, isLoading, router]);
 
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
       <main className="flex h-[100svh] w-full flex-col items-center justify-center bg-background">
         <AppSkeleton />
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="flex h-[100svh] w-full flex-col items-center justify-center bg-background p-4">
+        <div className="flex flex-col items-center space-y-4 text-center">
+          <Image
+            src="/images/logo/logo-no-bg.svg"
+            alt="Echoes Logo"
+            width={96}
+            height={96}
+            className="h-24 w-24"
+          />
+          <h1 className="text-2xl font-bold">欢迎来到 Echoes</h1>
+          <p className="max-w-md text-muted-foreground">
+            此应用是为微信小程序提供服务的。请通过微信小程序访问以获得完整的体验和功能。
+          </p>
+        </div>
       </main>
     );
   }
