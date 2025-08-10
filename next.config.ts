@@ -19,9 +19,18 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'firebasestorage.googleapis.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'your-supabase-url.supabase.co',
       }
     ],
   },
+  webpack: (config, { isServer }) => {
+    // These are optional dependencies of genkit, we don't need them to be bundled.
+    config.externals.push('@genkit-ai/firebase', '@opentelemetry/exporter-jaeger');
+    return config;
+  }
 };
 
 export default nextConfig;

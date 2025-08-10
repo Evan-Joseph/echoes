@@ -2,12 +2,10 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import PhoneInputWithCountrySelect, { isValidPhoneNumber } from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +18,6 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,15 +29,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, KeyRound } from 'lucide-react';
-import { auth, setupRecaptcha, sendVerificationCode, verifyCodeAndSignIn, createAnonymousUser } from '@/lib/firebase/auth';
+import { createAnonymousUser } from '@/lib/supabase/auth';
+import { useAuth } from '@/contexts/auth-context';
 
-const phoneSchema = z.object({
-    phoneNumber: z.string().refine(isValidPhoneNumber, { message: '无效的手机号码' }),
-});
-
-const codeSchema = z.object({
-  code: z.string().length(6, '验证码必须是6位'),
-});
 
 const tokenSchema = z.object({
     token: z.string().min(10, '令牌格式不正确'),
@@ -49,81 +40,28 @@ const tokenSchema = z.object({
 
 export default function LoginPage() {
     const [isLoading, setIsLoading] = React.useState(false);
-    const [step, setStep] = React.useState<'phone' | 'code'>('phone');
     const [showTokenDialog, setShowTokenDialog] = React.useState(false);
     const [anonymousUid, setAnonymousUid] = React.useState('');
 
     const router = useRouter();
     const { toast } = useToast();
-
-    const phoneForm = useForm<z.infer<typeof phoneSchema>>({
-        resolver: zodResolver(phoneSchema),
-    });
-
-    const codeForm = useForm<z.infer<typeof codeSchema>>({
-        resolver: zodResolver(codeSchema),
-    });
+    const { user } = useAuth();
     
     const tokenForm = useForm<z.infer<typeof tokenSchema>>({
         resolver: zodResolver(tokenSchema),
     });
 
     React.useEffect(() => {
-        // This is necessary for Firebase phone auth to work.
-        // It creates an invisible reCAPTCHA verifier.
-        if (auth) {
-            setupRecaptcha(auth, 'recaptcha-container');
+        if (user) {
+            router.push('/');
         }
-    }, []);
-
-    const handleSendCode = async (data: z.infer<typeof phoneSchema>) => {
-        setIsLoading(true);
-        try {
-            const appVerifier = (window as any).recaptchaVerifier;
-            if (!appVerifier) {
-                throw new Error("reCAPTCHA verifier not initialized.");
-            }
-            await sendVerificationCode(data.phoneNumber, appVerifier);
-            toast({
-                title: '验证码已发送',
-                description: `已向 ${data.phoneNumber} 发送验证码。`,
-            });
-            setStep('code');
-        } catch (error: any) {
-            console.error(error);
-            toast({
-                title: '发送失败',
-                description: error.message,
-                variant: 'destructive',
-            });
-        }
-        setIsLoading(false);
-    };
-
-    const handleVerifyCode = async (data: z.infer<typeof codeSchema>) => {
-        setIsLoading(true);
-        try {
-            const user = await verifyCodeAndSignIn(data.code);
-            if (user) {
-                toast({ title: '登录成功！', description: '欢迎回来！' });
-                router.push('/');
-            }
-        } catch (error: any) {
-            console.error(error);
-            toast({
-                title: '登录失败',
-                description: '验证码错误或已过期，请重试。',
-                variant: 'destructive',
-            });
-        }
-        setIsLoading(false);
-    };
+    }, [user, router]);
     
     const handleAnonymousLogin = async () => {
         setIsLoading(true);
         try {
             const user = await createAnonymousUser();
-            setAnonymousUid(user.uid);
+            setAnonymousUid(user.id);
             setShowTokenDialog(true);
         } catch (error: any) {
              console.error(error);
@@ -145,7 +83,6 @@ export default function LoginPage() {
 
     return (
         <main className="flex h-[100svh] w-full flex-col items-center justify-center bg-background p-4">
-             <div id="recaptcha-container"></div>
              <AlertDialog open={showTokenDialog} onOpenChange={setShowTokenDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -163,109 +100,42 @@ export default function LoginPage() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <Tabs defaultValue="login" className="w-full max-w-sm">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="login">登录</TabsTrigger>
-                    <TabsTrigger value="anonymous">匿名访问</TabsTrigger>
-                </TabsList>
-                
-                {/* Phone Login Tab */}
-                <TabsContent value="login">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>欢迎来到 回响</CardTitle>
-                            <CardDescription>
-                                {step === 'phone' ? '请输入手机号登录或注册。' : '请输入收到的6位验证码。'}
-                            </CardDescription>
-                        </CardHeader>
-
-                        {step === 'phone' && (
-                             <form onSubmit={phoneForm.handleSubmit(handleSendCode)}>
-                                <CardContent className="space-y-4">
-                                     <Controller
-                                        name="phoneNumber"
-                                        control={phoneForm.control}
-                                        render={({ field, fieldState }) => (
-                                            <div className="space-y-2">
-                                                <Label>手机号</Label>
-                                                <PhoneInputWithCountrySelect
-                                                    international
-                                                    defaultCountry="CN"
-                                                    value={field.value}
-                                                    onChange={field.onChange}
-                                                    className="input" // Custom class for styling
-                                                />
-                                                {fieldState.error && <p className="text-sm font-medium text-destructive">{fieldState.error.message}</p>}
-                                            </div>
-                                        )}
-                                    />
-                                </CardContent>
-                                <CardFooter>
-                                    <Button className="w-full" type="submit" disabled={isLoading}>
-                                        {isLoading ? <Loader2 className="animate-spin" /> : '发送验证码'}
-                                    </Button>
-                                </CardFooter>
-                             </form>
-                        )}
-                       
-                        {step === 'code' && (
-                            <form onSubmit={codeForm.handleSubmit(handleVerifyCode)}>
-                                <CardContent className="space-y-4">
-                                     <div className="space-y-2">
-                                        <Label htmlFor="code">验证码</Label>
-                                        <Input id="code" type="text" {...codeForm.register('code')} placeholder="_ _ _ _ _ _" />
-                                        {codeForm.formState.errors.code && <p className="text-sm font-medium text-destructive">{codeForm.formState.errors.code.message}</p>}
-                                    </div>
-                                    <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setStep('phone')}>返回修改手机号</Button>
-                                </CardContent>
-                                <CardFooter>
-                                    <Button className="w-full" type="submit" disabled={isLoading}>
-                                        {isLoading ? <Loader2 className="animate-spin" /> : '登录'}
-                                    </Button>
-                                </CardFooter>
-                            </form>
-                        )}
-                    </Card>
-                </TabsContent>
-
-                {/* Anonymous Login Tab */}
-                <TabsContent value="anonymous">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>访问方式</CardTitle>
-                            <CardDescription>
-                                选择一种方式开始你的旅程。
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                             <Button className="w-full" onClick={handleAnonymousLogin} disabled={isLoading}>
-                                {isLoading ? <Loader2 className="animate-spin" /> : '开始匿名会话'}
-                            </Button>
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-background px-2 text-muted-foreground">
-                                    或
-                                    </span>
-                                </div>
+            <div className="w-full max-w-sm">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>欢迎来到 回响</CardTitle>
+                        <CardDescription>
+                            选择一种方式开始你的旅程。
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                            <Button className="w-full" onClick={handleAnonymousLogin} disabled={isLoading}>
+                            {isLoading ? <Loader2 className="animate-spin" /> : '开始匿名会话'}
+                        </Button>
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t" />
                             </div>
-                            <form onSubmit={tokenForm.handleSubmit(handleTokenLogin)} className="space-y-2">
-                                <Label htmlFor="token" className="flex items-center gap-2 text-muted-foreground">
-                                    <KeyRound className="h-4 w-4" />
-                                    使用令牌恢复数据
-                                </Label>
-                                <div className="flex gap-2">
-                                    <Input id="token" placeholder="在此粘贴你的令牌 (UID)" {...tokenForm.register('token')} />
-                                    <Button type="submit">恢复</Button>
-                                </div>
-                                {tokenForm.formState.errors.token && <p className="text-sm font-medium text-destructive">{tokenForm.formState.errors.token.message}</p>}
-                            </form>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-background px-2 text-muted-foreground">
+                                或
+                                </span>
+                            </div>
+                        </div>
+                        <form onSubmit={tokenForm.handleSubmit(handleTokenLogin)} className="space-y-2">
+                            <Label htmlFor="token" className="flex items-center gap-2 text-muted-foreground">
+                                <KeyRound className="h-4 w-4" />
+                                使用令牌恢复数据
+                            </Label>
+                            <div className="flex gap-2">
+                                <Input id="token" placeholder="在此粘贴你的令牌 (UID)" {...tokenForm.register('token')} />
+                                <Button type="submit">恢复</Button>
+                            </div>
+                            {tokenForm.formState.errors.token && <p className="text-sm font-medium text-destructive">{tokenForm.formState.errors.token.message}</p>}
+                        </form>
+                    </CardContent>
+                </Card>
+            </div>
             <style jsx global>{`
                 .PhoneInputCountry {
                     background-color: hsl(var(--card));

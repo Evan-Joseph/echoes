@@ -14,8 +14,8 @@ import { MoreVertical, RotateCw, Trash2, Share2, Sparkles, User, Activity as Act
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { getUserMessages, saveMessage, addCheckIn } from '@/lib/firebase/firestore';
-import { clearChatHistoryAction, makeCheckInPublicAction, generateSuggestionsAction, getUserActivitiesAction } from '@/app/actions';
+import { getUserMessages, saveMessage } from '@/lib/supabase/db';
+import { clearChatHistoryAction, makeCheckInPublicAction, generateSuggestionsAction, getUserActivitiesAction, addCheckInAction } from '@/app/actions';
 import Image from 'next/image';
 import {
   Carousel,
@@ -153,7 +153,10 @@ export default function ChatLayout() {
       setIsAiResponding(true);
   
       try {
-          const checkInId = await addCheckIn(failedMessage.data);
+          const result = await addCheckInAction(failedMessage.data);
+          if (!result.success || !result.checkInId) {
+            throw new Error(result.message || 'Failed to retry check-in.');
+          }
           
           const successMsg: Message = {
               id: failedMessage.id,
@@ -162,10 +165,10 @@ export default function ChatLayout() {
               timestamp: new Date().toISOString(),
               userId: user.uid,
               status: undefined,
-              data: { newCheckInId: checkInId },
+              data: { newCheckInId: result.checkInId },
           };
 
-          const replyContent = createSharePrompt(checkInId);
+          const replyContent = createSharePrompt(result.checkInId);
           successMsg.content = replyContent;
           
           await saveMessage({ ...successMsg, contentForDb: `记录成功！为你记录了这宝贵的一刻。你想公开分享吗？` });
@@ -254,15 +257,19 @@ export default function ChatLayout() {
     };
     
     try {
-      const checkInId = await addCheckIn(checkInToSave);
-      const userMessageContent = `【打卡】${checkInData.content}${checkInData.photoDataUri ? ' [图片]' : ''}`;
-      addMessage('user', userMessageContent, { data: {} });
+      const result = await addCheckInAction(checkInToSave);
+      if (result.success && result.checkInId) {
+        const userMessageContent = `【打卡】${checkInData.content}${checkInData.photoDataUri ? ' [图片]' : ''}`;
+        addMessage('user', userMessageContent, { data: {} });
 
-      const replyContent = createSharePrompt(checkInId);
-      addMessage('ai', replyContent, {
-        contentForDb: `记录成功！为你记录了这宝贵的一刻。你想公开分享吗？`,
-        data: { newCheckInId: checkInId }
-      });
+        const replyContent = createSharePrompt(result.checkInId);
+        addMessage('ai', replyContent, {
+          contentForDb: `记录成功！为你记录了这宝贵的一刻。你想公开分享吗？`,
+          data: { newCheckInId: result.checkInId }
+        });
+      } else {
+        throw new Error(result.message || 'Failed to save check-in.');
+      }
 
     } catch(error: any) {
        console.error('Failed to save check-in:', error);

@@ -5,7 +5,7 @@ import { generateWordCloudData } from '@/ai/flows/generate-word-cloud';
 import { generateAiComment } from '@/ai/flows/get-related-suggestions';
 import { generateSuggestions } from '@/ai/flows/generate-suggestions';
 import { generateMonthlyReport } from '@/ai/flows/generate-monthly-report';
-import { getPublicCheckIns, getUserCheckIns, likeCheckIn, unlikeCheckIn, deleteUserMessages, getUserProfile, updateUserProfile, makeCheckInPublic, makeCheckInPrivate, deleteCheckIn, addComment, getCommentsForCheckIn, getAllUsers, getAllCheckIns, getUserMessages, createReport, getPendingReports, getCheckInById, resolveReport, getApprovedActivities, createActivity, joinActivity, getPendingActivities, updateActivityStatus, getUserActivities, getActivityById, getCheckInsForActivity, updateCheckIn, leaveActivity, saveMonthlyReport, getMonthlyReport } from '@/lib/firebase/firestore';
+import { getPublicCheckIns, getUserCheckIns, likeCheckIn, unlikeCheckIn, deleteUserMessages, getUserProfile, updateUserProfile, makeCheckInPublic, makeCheckInPrivate, deleteCheckIn, addComment, getCommentsForCheckIn, getAllUsers, getAllCheckIns, getUserMessages, createReport, getPendingReports, getCheckInById, resolveReport, getApprovedActivities, createActivity, joinActivity, getPendingActivities, updateActivityStatus, getUserActivities, getActivityById, getCheckInsForActivity, updateCheckIn, leaveActivity, saveMonthlyReport, getMonthlyReport, AppCheckInData } from '@/lib/supabase/db';
 import type { AppCheckIn, AppUser, CommentWithAuthor, Message, Report, Activity, ActivityWithAuthor, MonthlyReport } from '@/lib/types';
 
 
@@ -336,7 +336,19 @@ export async function getCheckInsForActivityAction(activityId: string): Promise<
     return checkInsWithAuthors;
 }
 
+import { addCheckIn } from '@/lib/supabase/db';
+
 // === Check-in Actions ===
+export async function addCheckInAction(checkInData: AppCheckInData): Promise<{ success: boolean, checkInId?: string, message?: string }> {
+    try {
+        const checkInId = await addCheckIn(checkInData);
+        return { success: true, checkInId };
+    } catch (error: any) {
+        console.error(`Failed to add check-in:`, error);
+        return { success: false, message: error.message };
+    }
+}
+
 export async function updateCheckInAction(
     checkInId: string, 
     userId: string, 

@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
-import { getActivityByIdAction, getCheckInsForActivityAction, likeCheckInAction, unlikeCheckInAction, createReportAction, addCommentAction, getCommentsAction, generateAiCommentAction, addCheckIn, joinActivityAction, leaveActivityAction } from '@/app/actions';
+import { getActivityByIdAction, getCheckInsForActivityAction, likeCheckInAction, unlikeCheckInAction, createReportAction, addCommentAction, getCommentsAction, generateAiCommentAction, addCheckInAction, joinActivityAction, leaveActivityAction } from '@/app/actions';
 import type { AppCheckIn, AppUser, Activity, CommentWithAuthor } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -323,12 +323,15 @@ export default function ActivityDetailPage() {
         };
         
         try {
-          await addCheckIn(checkInToSave);
-          toast({ title: '分享成功！', description: '你的分享已发布到活动话题下。' });
-          // Reload check-ins for this activity
-          await loadData();
+            const result = await addCheckInAction(checkInToSave);
+            if (result.success) {
+                toast({ title: '分享成功！', description: '你的分享已发布到活动话题下。' });
+                await loadData(); // Reload check-ins for this activity
+            } else {
+                throw new Error(result.message || '保存分享时出错了。');
+            }
         } catch(error: any) {
-           toast({ title: '分享失败', description: error.message || '保存分享时出错了。', variant: 'destructive' });
+           toast({ title: '分享失败', description: error.message, variant: 'destructive' });
         } finally {
           setIsSubmitting(false);
         }
