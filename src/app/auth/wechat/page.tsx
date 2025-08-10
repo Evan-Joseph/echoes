@@ -5,9 +5,9 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 
-export default function WeChatAuthPage() {
+function WeChatAuthClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -39,6 +39,7 @@ export default function WeChatAuthPage() {
     }
 
     const performLogin = async () => {
+      const supabase = getSupabaseClient();
       try {
         const response = await fetch('/api/auth/callback', {
           method: 'POST',
@@ -53,19 +54,27 @@ export default function WeChatAuthPage() {
           throw new Error(errorData.error || '服务器发生错误');
         }
 
-        const { session, user: userData } = await response.json();
+        const { token, email, user: userData } = await response.json();
 
-        if (!session || !userData) {
-          throw new Error('未能获取有效的Session或用户信息。');
+        if (!token || !email || !userData) {
+          throw new Error('未能获取有效的登录凭证。');
         }
 
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
+        const {
+          data: { session },
+          error: otpError,
+        } = await supabase.auth.verifyOtp({
+          email,
+          token,
+          type: 'magiclink',
         });
 
-        if (sessionError) {
-          throw sessionError;
+        if (otpError) {
+          throw otpError;
+        }
+
+        if (!session) {
+          throw new Error('无法创建会话，请重试。');
         }
 
         setStatus('登录成功！正在跳转...');
@@ -106,5 +115,21 @@ export default function WeChatAuthPage() {
         <p className="max-w-md text-center text-destructive">{error}</p>
       )}
     </div>
+  );
+}
+
+export default function WeChatAuthPage() {
+  // The component using useSearchParams must be wrapped in a Suspense boundary.
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex h-screen w-full flex-col items-center justify-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-muted-foreground">正在加载认证模块...</p>
+        </div>
+      }
+    >
+      <WeChatAuthClient />
+    </React.Suspense>
   );
 }

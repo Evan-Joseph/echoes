@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import jwt from 'jsonwebtoken';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(request: Request) {
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   try {
     const { code, nickName, avatarUrl } = await request.json();
 
@@ -18,9 +17,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { WECHAT_APPID, WECHAT_APPSECRET, SUPABASE_JWT_SECRET } = process.env;
+    const { WECHAT_APPID, WECHAT_APPSECRET } = process.env;
 
-    if (!WECHAT_APPID || !WECHAT_APPSECRET || !SUPABASE_JWT_SECRET) {
+    if (!WECHAT_APPID || !WECHAT_APPSECRET) {
       console.error('Missing required environment variables for WeChat auth');
       return NextResponse.json(
         { error: 'Server configuration error.' },
@@ -58,6 +57,8 @@ export async function POST(request: Request) {
       throw new Error(`Error querying profile: ${profileError.message}`);
     }
 
+    const dummyEmail = `${openid}@wechat.user`;
+
     if (existingProfile) {
       // User exists, update their profile info
       const { data: updatedProfile, error: updateError } = await supabaseAdmin
@@ -81,7 +82,6 @@ export async function POST(request: Request) {
       user = authUser.user;
     } else {
       // User does not exist, create a new one
-      const dummyEmail = `${openid}@wechat.user`;
       const { data: newUser, error: createError } =
         await supabaseAdmin.auth.admin.createUser({
           email: dummyEmail,
@@ -93,16 +93,19 @@ export async function POST(request: Request) {
         });
 
       if (createError) {
-        // Handle potential race condition or existing email
         if (createError.message.includes('already exists')) {
+          // Race condition: another request created the user.
+          // Ask client to retry. The next attempt will find the user in the 'profiles' table.
           return NextResponse.json(
-            { error: 'User with this email already exists.' },
+            { error: 'Login conflict. Please try again.' },
             { status: 409 }
           );
         }
+        // For other creation errors, throw.
         throw new Error(`Error creating user: ${createError.message}`);
       }
 
+      // If creation was successful
       user = newUser.user;
 
       // The handle_new_user trigger creates the profile. Update it with WeChat info.
@@ -127,33 +130,31 @@ export async function POST(request: Request) {
       profile = newProfile;
     }
 
-    // 3. Create a custom JWT
-    const payload = {
-      sub: user.id,
-      aud: 'authenticated',
-      role: 'authenticated',
-      email: user.email,
-      phone: user.phone,
-      user_metadata: user.user_metadata,
-      app_metadata: user.app_metadata,
-      session_id: user.id, // A simple session id
-      exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour expiration
-    };
-
-    const accessToken = jwt.sign(payload, SUPABASE_JWT_SECRET);
-
-    // 4. Return the session and user data
-    return NextResponse.json({
-      session: {
-        access_token: accessToken,
-        token_type: 'bearer',
-        expires_in: 3600,
-        user: {
-          id: user.id,
-          email: user.email,
-          user_metadata: user.user_metadata,
+    // 3. Generate a magic link for the user
+    const { data: magicLinkData, error: magicLinkError } =
+      await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: dummyEmail,
+        options: {
+          redirectTo: '/', // The page to redirect to after successful login
         },
-      },
+      });
+
+    if (magicLinkError) {
+      throw new Error(`Error generating magic link: ${magicLinkError.message}`);
+    }
+
+    const { properties, ...rest } = magicLinkData;
+    const token = properties?.action_link.split('token=')[1].split('&')[0];
+
+    if (!token) {
+      throw new Error('Could not extract token from magic link.');
+    }
+
+    // 4. Return the token and user profile to the client
+    return NextResponse.json({
+      token: token,
+      email: dummyEmail,
       user: profile,
     });
   } catch (error: any) {

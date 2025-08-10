@@ -1,73 +1,94 @@
-# Echoes Firebase
+# Echoes - AI驱动的个人成长伙伴
 
-Echoes是一个AI驱动的对话式个人成长指导中心，旨在通过沉浸式对话体验帮助用户实现个人成长目标。
+Echoes是一个AI驱动的对话式个人成长指导平台，旨在通过沉浸式的对话体验，帮助用户探索自我、设定目标并持续成长。
 
-## 项目概述
+## 核心理念
 
-Echoes提供了一个基于AI的互动平台，用户可以通过对话获得个性化的成长指导，参与活动和打卡，加入社群讨论，并跟踪自己的成长进度。
+我们相信，真正的成长始于对话。Echoes的核心是“一个页面带全局，一切从对话开始”。我们摒弃了复杂的功能菜单，将所有交互都融入到与AI伙伴的自然语言交流中，为您提供一个有温度、懂思考的“AI成长伙伴”。
 
 ## 核心功能
 
-1. **沉浸式AI对话界面** - Hero Zone设计，提供专注且富有吸引力的对话体验
-2. **AI引导交互** - 基于Gemini模型的智能对话系统，提供个性化指导
-3. **活动参与和打卡系统** - 参与成长活动并记录进度
-4. **个人成长洞察** - 基于用户数据提供成长分析和建议
-5. **成就系统** - 完成目标获得成就徽章
-6. **社群广场** - 用户互动和经验分享社区
+1.  **沉浸式AI对话界面** - 设计了极简的对话界面，让您能专注于与AI的交流。
+2.  **AI引导与交互** - 基于强大的AI模型，实现上下文感知、意图识别，让功能调用如对话般自然。
+3.  **活动与打卡系统** - 通过对话发现和参与线上成长活动，并通过每日打卡与AI互动，记录成长足迹。
+4.  **个人成长洞察** - AI会根据您的对话生成个人成长报告，包含词云、情感分析等，帮助您更好地认识自己。
+5.  **微信生态集成** - 支持从微信小程序一键登录，实现跨平台的无缝体验。
 
 ## 技术栈
 
-- **前端框架**: Next.js 15.3.3
+- **前端框架**: Next.js
 - **编程语言**: TypeScript
-- **后端服务**: Firebase (Authentication, Firestore, Storage)
-- **AI功能**: Genkit 1.14.1, Google AI (Gemini-2.0-flash)
-- **UI组件库**: Radix UI
+- **后端服务**: **Supabase** (认证, 数据库, 存储)
+- **AI 功能**: Genkit, Google AI (Gemini)
+- **UI 组件库**: Radix UI, shadcn/ui
 - **样式框架**: Tailwind CSS
-- **构建工具**: Next.js内置构建系统
 
 ## 开发环境设置
 
-1. 克隆仓库
-2. 安装依赖
-   ```bash
-   npm install
-   ```
-3. 配置环境变量
-   创建`.env`文件，添加必要的Firebase和Google AI凭证
-4. 启动开发服务器
-   ```bash
-   npm run dev
-   ```
+1.  **克隆仓库**
+    ```bash
+    git clone <repository-url>
+    cd <repository-name>
+    ```
+
+2.  **安装依赖**
+    ```bash
+    npm install
+    ```
+
+3.  **配置环境变量**
+    - 复制 `.env.example` (如果存在) 或创建 `.env.local` 文件。
+    - 在 [Supabase](https://supabase.com/) 项目中获取您的服务密钥和URL。
+    - 添加以下环境变量：
+      ```env
+      # Supabase
+      NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
+      NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+      SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+
+      # WeChat Mini Program
+      WECHAT_APPID=YOUR_WECHAT_APPID
+      WECHAT_APPSECRET=YOUR_WECHAT_APPSECRET
+      ```
+
+4.  **启动开发服务器**
+    ```bash
+    npm run dev
+    ```
+    在浏览器中打开 `http://localhost:3000` 查看。
 
 ## 项目结构
 
 ```
-├── .env                  # 环境变量配置
-├── .gitignore            # Git忽略文件
-├── apphosting.yaml       # Firebase托管配置
-├── docs/                 # 项目文档
-├── next.config.ts        # Next.js配置
-├── package.json          # 项目依赖
-├── public/               # 静态资源
-├── src/                  # 源代码
-│   ├── ai/               # AI相关代码
-│   ├── app/              # Next.js应用路由
-│   ├── components/       # UI组件
-│   ├── contexts/         # React上下文
-│   ├── genkit/           # Genkit流程配置
-│   ├── hooks/            # 自定义钩子
-│   └── lib/              # 工具函数和配置
-├── tailwind.config.ts    # Tailwind配置
-└── tsconfig.json         # TypeScript配置
+.
+├── docs/                 # 项目文档 (设计蓝图、需求等)
+├── public/               # 静态资源 (图片、Logo等)
+├── src/
+│   ├── ai/               # AI 相关代码 (Genkit Flows)
+│   ├── app/              # Next.js 应用路由和页面
+│   │   ├── api/          # API 路由
+│   │   └── auth/         # 认证页面 (微信登录回调)
+│   ├── components/       # React UI 组件
+│   ├── contexts/         # React 上下文 (如 AuthContext)
+│   ├── hooks/            # 自定义 React 钩子
+│   ├── lib/              # 核心库、工具函数和配置
+│   │   └── supabase/     # Supabase 客户端和服务端配置
+│   └── ...
+├── supabase/             # Supabase 数据库迁移脚本
+├── package.json
+└── tsconfig.json
 ```
 
-## 贡献指南
+## 贡献
 
-1.  Fork仓库
-2.  创建特性分支
-3.  提交更改
-4.  创建Pull Request
+我们欢迎任何形式的贡献！请遵循以下步骤：
+
+1.  Fork 本仓库
+2.  创建您的特性分支 (`git checkout -b feature/AmazingFeature`)
+3.  提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
+4.  推送到分支 (`git push origin feature/AmazingFeature`)
+5.  创建一个 Pull Request
 
 ## 许可证
 
-本项目采用MIT许可证。详情请见LICENSE文件。
+本项目采用 MIT 许可证。详情请见 `LICENSE` 文件。

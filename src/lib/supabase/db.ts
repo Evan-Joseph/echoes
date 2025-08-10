@@ -1,4 +1,4 @@
-import { supabase } from './client';
+import { getSupabaseClient } from './client';
 import type {
   Message,
   AppCheckIn,
@@ -38,6 +38,7 @@ async function uploadPhoto(
   userId: string,
   folder: 'checkIns' | 'avatars' | 'activities'
 ): Promise<string> {
+  const supabase = getSupabaseClient();
   try {
     const mimeTypeMatch = photoDataUri.match(/data:(.*);base64,/);
     if (!mimeTypeMatch) {
@@ -81,6 +82,7 @@ async function uploadPhoto(
  * Adds a new check-in document to the 'checkIns' table.
  */
 export async function addCheckIn(checkInData: AppCheckInData): Promise<string> {
+  const supabase = getSupabaseClient();
   try {
     const docData: any = {
       userId: checkInData.userId,
@@ -127,6 +129,7 @@ export async function updateCheckIn(
   userId: string,
   data: { content: string; photoDataUri?: string }
 ): Promise<void> {
+  const supabase = getSupabaseClient();
   try {
     const { data: existingCheckIn, error: fetchError } = await supabase
       .from('checkIns')
@@ -185,6 +188,7 @@ export async function deleteCheckIn(
   checkInId: string,
   userId: string
 ): Promise<void> {
+  const supabase = getSupabaseClient();
   const { data: checkInData, error: fetchError } = await supabase
     .from('checkIns')
     .select('userId, photoUrl')
@@ -216,6 +220,7 @@ export async function deleteCheckIn(
  * Retrieves the latest public check-ins.
  */
 export async function getPublicCheckIns(count = 20): Promise<AppCheckIn[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('checkIns')
     .select('*')
@@ -235,6 +240,7 @@ export async function getPublicCheckIns(count = 20): Promise<AppCheckIn[]> {
  * Retrieves all check-ins for a specific user.
  */
 export async function getUserCheckIns(userId: string): Promise<AppCheckIn[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('checkIns')
     .select('*')
@@ -256,6 +262,7 @@ export async function likeCheckIn(
   checkInId: string,
   userId: string
 ): Promise<void> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('checkIns')
     .select('likedBy')
@@ -280,6 +287,7 @@ export async function unlikeCheckIn(
   checkInId: string,
   userId: string
 ): Promise<void> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('checkIns')
     .select('likedBy')
@@ -304,6 +312,7 @@ async function setCheckInPublic(
   checkInId: string,
   isPublic: boolean
 ): Promise<void> {
+  const supabase = getSupabaseClient();
   const { error } = await supabase
     .from('checkIns')
     .update({ isPublic })
@@ -320,6 +329,7 @@ export const makeCheckInPrivate = (id: string) => setCheckInPublic(id, false);
  * Saves a chat message to Supabase.
  */
 export async function saveMessage(message: Message): Promise<string> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('messages')
     .insert({
@@ -344,6 +354,7 @@ export async function saveMessage(message: Message): Promise<string> {
  * Retrieves all chat messages for a specific user.
  */
 export async function getUserMessages(userId: string): Promise<Message[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('messages')
     .select('*')
@@ -362,6 +373,7 @@ export async function getUserMessages(userId: string): Promise<Message[]> {
  * Deletes all chat messages for a specific user.
  */
 export async function deleteUserMessages(userId: string): Promise<void> {
+  const supabase = getSupabaseClient();
   const { error } = await supabase
     .from('messages')
     .delete()
@@ -375,6 +387,7 @@ export async function deleteUserMessages(userId: string): Promise<void> {
  * Gets a user's public profile.
  */
 export async function getUserProfile(userId: string): Promise<AppUser> {
+  const supabase = getSupabaseClient();
   if (userId === AI_USER_ID) {
     return {
       id: AI_USER_ID,
@@ -413,6 +426,7 @@ export async function updateUserProfile(
   userId: string,
   data: { displayName?: string; photoURL?: string }
 ): Promise<void> {
+  const supabase = getSupabaseClient();
   const updateData: { [key: string]: any } = {
     ...data,
     updatedAt: new Date().toISOString(),
@@ -439,6 +453,7 @@ export async function addComment(
   userId: string,
   content: string
 ): Promise<string> {
+  const supabase = getSupabaseClient();
   // This requires a stored procedure in Supabase for atomicity.
   // For now, we do it non-atomically.
   const { data, error } = await supabase
@@ -460,6 +475,7 @@ export async function addComment(
 export async function getCommentsForCheckIn(
   checkInId: string
 ): Promise<CommentWithAuthor[]> {
+  const supabase = getSupabaseClient();
   const { data: comments, error } = await supabase
     .from('comments')
     .select('*, author:profiles(*)')
@@ -488,6 +504,7 @@ interface CreateActivityData {
 export async function createActivity(
   activityData: CreateActivityData
 ): Promise<string> {
+  const supabase = getSupabaseClient();
   const coverImageUrl = await uploadPhoto(
     activityData.coverImageDataUri,
     activityData.userId,
@@ -505,6 +522,7 @@ export async function createActivity(
 async function getActivitiesByStatus(
   status: 'approved' | 'pending'
 ): Promise<Activity[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('activities')
     .select('*')
@@ -518,6 +536,7 @@ export const getApprovedActivities = () => getActivitiesByStatus('approved');
 export const getPendingActivities = () => getActivitiesByStatus('pending');
 
 export async function getUserActivities(userId: string): Promise<Activity[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('activities')
     .select('*')
@@ -533,6 +552,7 @@ export async function updateActivityStatus(
   activityId: string,
   status: 'approved' | 'rejected'
 ): Promise<void> {
+  const supabase = getSupabaseClient();
   const { error } = await supabase
     .from('activities')
     .update({ status })
@@ -545,6 +565,7 @@ async function updateActivityParticipants(
   userId: string,
   action: 'join' | 'leave'
 ): Promise<void> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('activities')
     .select('participants')
@@ -577,6 +598,7 @@ export async function createReport(
   checkInId: string,
   reportedByUserId: string
 ): Promise<string> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('reports')
     .insert({ checkInId, reportedByUserId })
@@ -587,6 +609,7 @@ export async function createReport(
 }
 
 export async function resolveReport(reportId: string): Promise<void> {
+  const supabase = getSupabaseClient();
   const { error } = await supabase
     .from('reports')
     .update({ status: 'resolved' })
@@ -595,6 +618,7 @@ export async function resolveReport(reportId: string): Promise<void> {
 }
 
 export async function getPendingReports(): Promise<Report[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('reports')
     .select('*')
@@ -605,6 +629,7 @@ export async function getPendingReports(): Promise<Report[]> {
 }
 
 export async function getAllUsers(): Promise<AppUser[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -614,6 +639,7 @@ export async function getAllUsers(): Promise<AppUser[]> {
 }
 
 export async function getAllCheckIns(): Promise<AppCheckIn[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('checkIns')
     .select('*')
@@ -629,6 +655,7 @@ export async function getAllCheckIns(): Promise<AppCheckIn[]> {
 export async function getCheckInById(
   checkInId: string
 ): Promise<AppCheckIn | null> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('checkIns')
     .select('*')
@@ -645,6 +672,7 @@ export async function getCheckInById(
 export async function getActivityById(
   activityId: string
 ): Promise<Activity | null> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('activities')
     .select('*')
@@ -657,6 +685,7 @@ export async function getActivityById(
 export async function getCheckInsForActivity(
   activityId: string
 ): Promise<AppCheckIn[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('checkIns')
     .select('*')
@@ -676,6 +705,7 @@ export async function getCheckInsForActivity(
 export async function saveMonthlyReport(
   reportData: Omit<MonthlyReport, 'id' | 'createdAt'>
 ): Promise<string> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('monthly_reports')
     .insert(reportData)
@@ -690,6 +720,7 @@ export async function getMonthlyReport(
   year: number,
   month: number
 ): Promise<MonthlyReport | null> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('monthly_reports')
     .select('*')
