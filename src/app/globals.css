@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 35 100% 95.5%; /* 浅米色 #FFF8EA */
+    --foreground: 0 0% 25.9%; /* 深灰色 #424242 */
+    --card: 35 33% 97%; /* A slightly off-white for cards */
+    --card-foreground: 0 0% 25.9%;
+    --popover: 35 100% 95.5%;
+    --popover-foreground: 0 0% 25.9%;
+    --primary: 0 100% 80.2%; /* 暖粉色 #FF9B9B */
+    --primary-foreground: 0 0% 25.9%;
+    --secondary: 202 53% 77.8%; /* 淡蓝色 #A6D1E6 */
+    --secondary-foreground: 0 0% 25.9%;
+    --muted: 35 40% 93%;
+    --muted-foreground: 0 0% 45.9%; /* 中灰色 #757575 */
+    --accent: 60 100% 92.2%; /* 嫩黄色 #FEFFD6 */
+    --accent-foreground: 0 0% 25.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 35 20% 88%;
+    --input: 35 20% 88%;
+    --ring: 0 100% 80.2%;
+    --radius: 0.8rem;
+  }
+
+  .dark {
+    --background: 278 9% 10%;
+    --foreground: 0 0% 98%;
+    --card: 278 9% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 278 9% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 100% 70%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 202 53% 57.8%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 278 9% 20%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 60 100% 82.2%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 278 9% 25%;
+    --input: 278 9% 25%;
+    --ring: 0 100% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image: radial-gradient(circle at 50% 50%, hsl(35 100% 98%), hsl(var(--background)));
+  }
+}
