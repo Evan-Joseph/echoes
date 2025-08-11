@@ -2,7 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import type { User as FirebaseAuthUser } from 'firebase/auth';
+import type { User } from '@/lib/firebase/auth';
 
 export interface Message {
   id: string;
@@ -62,14 +62,14 @@ export interface CommentWithAuthor extends AppComment {
 // This is the public-facing user profile, stored in /users/{uid}
 export interface AppUser {
     uid: string;
-    displayName: string;
-    photoURL: string;
+    displayName: string | null;
+    photoURL: string | null;
     createdAt: string; // ISO String for serialization
     updatedAt?: string; // ISO String for serialization
 }
 
-// This is the user object from Firebase Auth, which is mostly private
-export type AuthUser = FirebaseAuthUser;
+// This is the user object from our local auth, which is mostly private
+export type AuthUser = User;
 
 // Type for a report document
 export interface Report {

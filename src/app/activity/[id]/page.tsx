@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -6,11 +5,25 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
-import { getActivityByIdAction, getCheckInsForActivityAction, likeCheckInAction, unlikeCheckInAction, createReportAction, addCommentAction, getCommentsAction, generateAiCommentAction, addCheckIn, joinActivityAction, leaveActivityAction } from '@/app/actions';
+// Correctly import addCheckInAction and other actions
+import {
+    getActivityByIdAction,
+    getCheckInsForActivityAction,
+    likeCheckInAction,
+    unlikeCheckInAction,
+    createReportAction,
+    addCommentAction,
+    getCommentsAction,
+    generateAiCommentAction,
+    addCheckInAction, // Corrected import
+    joinActivityAction,
+    leaveActivityAction
+} from '@/app/actions';
 import type { AppCheckIn, AppUser, Activity, CommentWithAuthor } from '@/lib/types';
+import type { User } from '@/lib/firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Users, Tag, Heart, MessageSquare, BotMessageSquare, Loader2, Send, MoreVertical, Flag, Activity as ActivityIcon, Edit, Lock, LogOut } from 'lucide-react';
@@ -24,7 +37,8 @@ import { ShareDialog } from '@/components/echoes/share-dialog';
 
 const AI_USER_ID = "echo-ai-assistant";
 
-function CommentSection({ checkInId, currentUser }: { checkInId: string, currentUser: AppUser | null }) {
+// Changed currentUser type to User to match useAuth()
+function CommentSection({ checkInId, currentUser }: { checkInId: string, currentUser: User | null }) {
     const [comments, setComments] = React.useState<CommentWithAuthor[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [newComment, setNewComment] = React.useState('');
@@ -62,6 +76,7 @@ function CommentSection({ checkInId, currentUser }: { checkInId: string, current
         const originalPost = document.getElementById(`post-content-${checkInId}`)?.textContent || '';
         try {
             const aiResponse = await generateAiCommentAction({ checkInContent: originalPost });
+            // The mock now returns commentText
             const result = await addCommentAction(checkInId, AI_USER_ID, aiResponse.commentText);
              if (result.success && result.newComment) {
                 setComments(prev => [result.newComment!, ...prev]);
@@ -106,12 +121,12 @@ function CommentSection({ checkInId, currentUser }: { checkInId: string, current
                 {!isLoading && comments.map(({id, author, content, createdAt}) => (
                     <div key={id} className="flex items-start gap-3 text-sm">
                         <Avatar className="h-8 w-8">
-                            <AvatarImage src={author?.photoURL} alt={author?.displayName} />
+                            <AvatarImage src={author?.photoURL || undefined} alt={author?.displayName || '用户'} />
                             <AvatarFallback>{author?.displayName?.charAt(0) || '?'}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                             <div className="flex items-baseline gap-2">
-                                <p className="font-semibold text-foreground">{author?.displayName}</p>
+                                <p className="font-semibold text-foreground">{author?.displayName || '匿名用户'}</p>
                                 <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(createdAt), { addSuffix: true, locale: zhCN })}</p>
                             </div>
                             <p className="text-foreground/90 whitespace-pre-wrap">{content}</p>
@@ -123,7 +138,7 @@ function CommentSection({ checkInId, currentUser }: { checkInId: string, current
     );
 }
 
-function TopicCheckInCard({ checkIn, author, currentUser }: { checkIn: AppCheckIn, author: AppUser, currentUser: AppUser | null }) {
+function TopicCheckInCard({ checkIn, author, currentUser }: { checkIn: AppCheckIn, author: AppUser, currentUser: User | null }) {
     const timeAgo = formatDistanceToNow(new Date(checkIn.createdAt), { addSuffix: true, locale: zhCN });
     const [likedBy, setLikedBy] = React.useState(checkIn.likedBy || []);
     const [isLiked, setIsLiked] = React.useState(currentUser ? likedBy.includes(currentUser.uid) : false);
@@ -184,11 +199,11 @@ function TopicCheckInCard({ checkIn, author, currentUser }: { checkIn: AppCheckI
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Avatar>
-                            <AvatarImage src={author.photoURL} alt={author.displayName} />
-                            <AvatarFallback>{author.displayName.charAt(0) || '匿'}</AvatarFallback>
+                            <AvatarImage src={author.photoURL || undefined} alt={author.displayName || '用户'} />
+                            <AvatarFallback>{author.displayName?.charAt(0) || '匿'}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <CardTitle className="text-base font-semibold text-foreground">{author.displayName}</CardTitle>
+                            <CardTitle className="text-base font-semibold text-foreground">{author.displayName || '匿名用户'}</CardTitle>
                             <p className="text-xs text-muted-foreground">{timeAgo}</p>
                         </div>
                     </div>
@@ -296,7 +311,7 @@ export default function ActivityDetailPage() {
             }
 
             setActivity(activityData);
-            setCheckIns(checkInsData as any);
+            setCheckIns(checkInsData);
         } catch (err) {
             console.error(err);
             setError('加载活动详情失败，请稍后重试。');
@@ -314,16 +329,23 @@ export default function ActivityDetailPage() {
             toast({ title: '请先登录', variant: 'destructive' });
             return;
         };
+        if (!activityId) {
+            toast({ title: '错误', description: '活动ID丢失，无法发布。', variant: 'destructive' });
+            return;
+        }
         setIsSubmitting(true);
         
         const checkInToSave = {
             userId: user.uid,
             isPublic: true, // Posts to an activity are public by default
+            activityId: activityId,
+            activityTitle: activity?.title,
             ...checkInData
         };
         
         try {
-          await addCheckIn(checkInToSave);
+          // Use the correct action
+          await addCheckInAction(checkInToSave);
           toast({ title: '分享成功！', description: '你的分享已发布到活动话题下。' });
           // Reload check-ins for this activity
           await loadData();
@@ -331,12 +353,13 @@ export default function ActivityDetailPage() {
            toast({ title: '分享失败', description: error.message || '保存分享时出错了。', variant: 'destructive' });
         } finally {
           setIsSubmitting(false);
+          setIsShareDialogOpen(false);
         }
     };
     
     const handleJoinActivity = async () => {
-        if (!user) {
-             toast({ title: '请先登录', variant: 'destructive' });
+        if (!user || !activityId) {
+             toast({ title: '请先登录或指定活动', variant: 'destructive' });
             return;
         }
         setIsJoining(true);
@@ -357,7 +380,7 @@ export default function ActivityDetailPage() {
     };
     
     const handleLeaveActivity = async () => {
-        if (!user) return;
+        if (!user || !activityId) return;
         setIsLeaving(true);
         try {
             const result = await leaveActivityAction(activityId, user.uid);

@@ -1,63 +1,91 @@
-
 'use server';
 /**
- * @fileOverview A Genkit flow to generate a comment from the AI based on a community post.
- *
- * - generateAiComment: A function that takes a post's content and returns a thoughtful comment.
- * - GenerateAiCommentInput - The input type for the flow.
- * - GenerateAiCommentOutput - The return type for the flow.
+ * @fileOverview An AI flow to generate comments and suggestions.
  */
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { getAiConfig } from '@/lib/ai-config';
 
-// Define Zod schemas for input and output
-const GenerateAiCommentInputSchema = z.object({
-  checkInContent: z.string().describe("The full text content of the user's check-in or post."),
+// --- AI Comment Generation ---
+
+const AiCommentInputSchema = z.object({
+  checkInContent: z.string(),
 });
-export type GenerateAiCommentInput = z.infer<typeof GenerateAiCommentInputSchema>;
+type AiCommentInput = z.infer<typeof AiCommentInputSchema>;
 
-const GenerateAiCommentOutputSchema = z.object({
-  commentText: z.string().describe("A friendly, engaging, and thought-provoking comment from the AI, ready to be posted."),
+const AiCommentOutputSchema = z.object({
+    commentText: z.string(),
 });
-export type GenerateAiCommentOutput = z.infer<typeof GenerateAiCommentOutputSchema>;
+type AiCommentOutput = z.infer<typeof AiCommentOutputSchema>;
 
-// Define the exported wrapper function
-export async function generateAiComment(input: GenerateAiCommentInput): Promise<GenerateAiCommentOutput> {
-  return generateAiCommentFlow(input);
+
+export async function generateAiComment(input: AiCommentInput): Promise<AiCommentOutput> {
+    const aiConfig = await getAiConfig();
+    const { apiKey, baseUrl } = aiConfig.apiConfig;
+    const { model, systemPrompt } = aiConfig.aiComment;
+
+    if (!apiKey) {
+        throw new Error("AI API Key is not configured.");
+    }
+
+    const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Here is the user's journal entry: "${input.checkInContent}"` },
+    ];
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: messages,
+            response_format: { type: "json_object" },
+        }),
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`API call failed with status ${response.status}: ${errorBody}`);
+    }
+
+    const jsonResponse = await response.json();
+    const content = jsonResponse.choices[0]?.message?.content;
+
+    if (!content) {
+        throw new Error("AI did not return any content.");
+    }
+
+    const parsedOutput = JSON.parse(content);
+    return AiCommentOutputSchema.parse(parsedOutput);
 }
 
-// Define the Genkit prompt
-const commentPrompt = ai.definePrompt({
-  name: 'generateAiCommentPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: { schema: GenerateAiCommentInputSchema },
-  output: { schema: GenerateAiCommentOutputSchema },
-  prompt: `
-    You are "回响 (Echoes)", a thoughtful and empathetic community member AI.
-    Your goal is to spark meaningful conversation by posting a comment on a user's public post.
 
-    Analyze the user's post content below:
-    "{{checkInContent}}"
+// --- Related Suggestions (Currently Mocked) ---
 
-    Based on this content, please write a single, warm, and insightful comment. Your comment should:
-    1.  Acknowledge the user's sharing.
-    2.  Offer a related thought, a gentle question, or a word of encouragement.
-    3.  Feel like a genuine peer, not a robot.
-    4.  The entire response should be just the text of the comment itself, formatted for the output schema.
-
-    Your entire response must be in Chinese.
-  `,
+const RelatedSuggestionsInputSchema = z.object({
+  topic: z.string().describe('The topic to find related suggestions for.'),
 });
+export type RelatedSuggestionsInput = z.infer<typeof RelatedSuggestionsInputSchema>;
 
-// Define the Genkit flow
-const generateAiCommentFlow = ai.defineFlow(
-  {
-    name: 'generateAiCommentFlow',
-    inputSchema: GenerateAiCommentInputSchema,
-    outputSchema: GenerateAiCommentOutputSchema,
-  },
-  async (input) => {
-    const { output } = await commentPrompt(input);
-    return output!;
-  }
-);
+const RelatedSuggestionsOutputSchema = z.object({
+  suggestions: z.array(z.string()).describe('A list of related suggestions.'),
+});
+export type RelatedSuggestionsOutput = z.infer<typeof RelatedSuggestionsOutputSchema>;
+
+/**
+ * NOTE: This function is currently mocked as it does not appear to be used in the application.
+ * It can be implemented with a real API call if needed in the future.
+ */
+export async function getRelatedSuggestions(input: RelatedSuggestionsInput): Promise<RelatedSuggestionsOutput> {
+  console.log("LOCAL MOCK: Generating static related suggestions for topic:", input.topic);
+
+  return {
+    suggestions: [
+      `关于 “${input.topic}” 的第一条模拟建议。`,
+      `关于 “${input.topic}” 的第二条模拟建议。`,
+      "这是一个通用的相关建议。",
+    ],
+  };
+}

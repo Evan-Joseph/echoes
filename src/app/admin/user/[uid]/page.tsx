@@ -221,11 +221,11 @@ export default function UserDetailPage() {
                     <CardHeader>
                         <div className="flex items-center gap-4">
                             <Avatar className="h-16 w-16">
-                                <AvatarImage src={profile.photoURL} />
-                                <AvatarFallback>{profile.displayName.charAt(0)}</AvatarFallback>
+                                <AvatarImage src={profile.photoURL || undefined} />
+                                <AvatarFallback>{profile.displayName?.charAt(0) || '?'}</AvatarFallback>
                             </Avatar>
                             <div>
-                                <CardTitle>{profile.displayName}</CardTitle>
+                                <CardTitle>{profile.displayName || '匿名用户'}</CardTitle>
                                 <CardDescription className="font-mono text-xs">{profile.uid}</CardDescription>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     加入于 {format(new Date(profile.createdAt), "PPP", { locale: zhCN })}

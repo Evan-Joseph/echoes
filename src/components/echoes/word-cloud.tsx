@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import WordCloud from 'react-d3-cloud';
-import { generateWordCloudDataAction } from '@/app/actions';
+import { generateWordCloudAction } from '@/app/actions';
 import type { AppCheckIn } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BrainCircuit } from 'lucide-react';
@@ -35,13 +35,13 @@ export function WordCloudCard({ checkIns }: WordCloudCardProps) {
       
       const contents = checkIns.map(c => c.content);
 
-      generateWordCloudDataAction({ checkInContents: contents })
-        .then(result => {
+      generateWordCloudAction({ checkInContents: contents })
+        .then((result: { words: WordData[] }) => {
           if (result && result.words) {
             setWords(result.words);
           }
         })
-        .catch(error => {
+        .catch((error: Error) => {
           console.error("Failed to generate word cloud data:", error);
           toast({
             title: "生成词云失败",

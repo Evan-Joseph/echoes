@@ -1,13 +1,6 @@
 /**
- * @fileOverview Centralized Genkit configuration.
+ * This file is intentionally left blank.
  *
- * This file initializes the Genkit AI instance with necessary plugins
- * and exports the configured `ai` object for use throughout the application.
- * This approach ensures a single source of truth for Genkit configuration.
+ * The original file was used to configure Genkit, which has been removed
+ * from the project. All AI flows are now self-contained mocks.
  */
-import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
-
-export const ai = genkit({
-  plugins: [googleAI()],
-});

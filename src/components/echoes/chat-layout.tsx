@@ -401,7 +401,8 @@ export default function ChatLayout() {
     setIsAiResponding(true);
 
     try {
-        const fullHistory = [...messages, { id: 'temp', role: 'user', content: text, timestamp: new Date().toISOString(), userId: user.uid }];
+        const newUserMessage: Message = { id: 'temp', role: 'user', content: text, timestamp: new Date().toISOString(), userId: user.uid };
+        const fullHistory = [...messages, newUserMessage];
         let historyForApi = fullHistory
             .filter(m => (m.role === 'user' || m.role === 'ai'))
             .slice(-10); 

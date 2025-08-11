@@ -1,17 +1,18 @@
+// --- Mock User Type ---
+// We create a mock User type that is compatible with the original Firebase User type
+// to minimize changes in the rest of the application code.
+export interface User {
+    uid: string;
+    isAnonymous: boolean;
+    displayName: string | null;
+    photoURL: string | null;
+    createdAt: string; // Added for compatibility with AppUser type
+    // Add other fields if needed by the app, otherwise keep it simple
+}
 
-import { 
-    getAuth, 
-    signInAnonymously, 
-    onAuthStateChanged, 
-    signOut,
-    RecaptchaVerifier,
-    signInWithPhoneNumber,
-    type User, 
-    type Auth
-} from 'firebase/auth';
-import { app } from './config';
+// --- Local Auth Service ---
 
-const auth = getAuth(app);
+const USER_STORAGE_KEY = 'local_user';
 
 // Helper to get window object safely
 const getWindow = () => {
@@ -19,73 +20,107 @@ const getWindow = () => {
         return window;
     }
     return undefined;
-}
+};
 
-// Ensure window is available before initializing recaptcha
-const windowObject = getWindow();
-
-export function setupRecaptcha(auth: Auth, elementId: string): RecaptchaVerifier | null {
-    if (!windowObject) return null;
-    
-    // Ensure the recaptcha verifier is only created once per element
-    if (!(windowObject as any).recaptchaVerifier) {
-        (windowObject as any).recaptchaVerifier = new RecaptchaVerifier(auth, elementId, {
-            'size': 'invisible',
-            'callback': (response: any) => {
-                // reCAPTCHA solved, allow signInWithPhoneNumber.
-                console.log("reCAPTCHA verified");
-            }
-        });
-    }
-    return (windowObject as any).recaptchaVerifier;
-}
-
-
+/**
+ * Gets the current user from localStorage.
+ * This replaces onAuthStateChanged and getCurrentUser.
+ */
 export function getCurrentUser(): Promise<User | null> {
-    return new Promise((resolve, reject) => {
-        const unsubscribe = onAuthStateChanged(auth, user => {
-            unsubscribe();
-            resolve(user);
-        }, reject);
+    return new Promise((resolve) => {
+        const windowObject = getWindow();
+        if (!windowObject) {
+            return resolve(null);
+        }
+        const userJson = windowObject.localStorage.getItem(USER_STORAGE_KEY);
+        if (userJson) {
+            resolve(JSON.parse(userJson) as User);
+        } else {
+            resolve(null);
+        }
     });
 }
 
+/**
+ * Creates a new anonymous user and stores it in localStorage.
+ * This replaces signInAnonymously.
+ */
 export async function createAnonymousUser(): Promise<User> {
-    const userCredential = await signInAnonymously(auth);
-    return userCredential.user;
+    const windowObject = getWindow();
+    if (!windowObject) {
+        throw new Error("Window is not available for anonymous sign-in.");
+    }
+
+    const newUser: User = {
+        uid: `local_user_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`,
+        isAnonymous: true,
+        displayName: 'Anonymous User',
+        photoURL: null,
+        createdAt: new Date().toISOString(),
+    };
+
+    windowObject.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
+    return newUser;
 }
 
-export async function sendVerificationCode(phoneNumber: string, appVerifier: RecaptchaVerifier): Promise<string> {
-    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+/**
+ * Signs out the user by clearing localStorage.
+ * This replaces signOut.
+ */
+export async function logOut(): Promise<void> {
+    const windowObject = getWindow();
     if (windowObject) {
-         (windowObject as any).confirmationResult = confirmationResult;
+        windowObject.localStorage.removeItem(USER_STORAGE_KEY);
     }
-    return confirmationResult.verificationId;
 }
 
-export async function verifyCodeAndSignIn(verificationCode: string): Promise<User> {
-    if (!windowObject || !(windowObject as any).confirmationResult) {
-        throw new Error("Confirmation result not found. Please send the verification code first.");
+// --- Deprecated Firebase Functions (mocked or removed) ---
+
+// Replace phone auth with a simplified username sign-in for local dev
+// This function is just a placeholder to show the concept.
+// The app's UI might need to be adapted to use this instead of the phone flow.
+export async function signInWithUsername(username: string): Promise<User> {
+     const windowObject = getWindow();
+    if (!windowObject) {
+        throw new Error("Window is not available for sign-in.");
     }
-    const confirmationResult = (windowObject as any).confirmationResult;
-    const result = await confirmationResult.confirm(verificationCode);
-    return result.user;
+
+    // In a real local setup, you might check a local DB of users.
+    // Here, we just create a new user based on the username.
+    const newUser: User = {
+        uid: `local_user_${username}`,
+        isAnonymous: false,
+        displayName: username,
+        photoURL: null,
+        createdAt: new Date().toISOString(),
+    };
+
+    windowObject.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
+    return newUser;
 }
 
-// In a real app, signInWithToken would be more complex, involving custom tokens or re-authentication.
-// For this app, we will treat the "token" (anonymous UID) as a way to inform the user,
-// but the actual sign-in will create a new anonymous session on the new device.
-// A true data migration would require a backend and more complex logic.
-export async function signInWithToken(token: string): Promise<User | null> {
-    // This is a simplified version. A real implementation would require custom auth.
-    // We'll just create a new anonymous user and the user can manually migrate data if needed.
-    console.log(`A real app would now find a way to link data for user UID: ${token}`);
+
+// The following functions are no longer needed and are removed or mocked to avoid errors.
+export function setupRecaptcha(): null {
+    console.warn("Recaptcha is not available in local mode.");
+    return null;
+}
+
+export async function sendVerificationCode(): Promise<string> {
+    throw new Error("Phone verification is not available in local mode.");
+}
+
+export async function verifyCodeAndSignIn(): Promise<User> {
+    throw new Error("Phone verification is not available in local mode.");
+}
+
+// This function's original purpose was to "sign in" on another device.
+// We'll simulate this by just creating a new anonymous user, as the original did.
+export async function signInWithToken(token: string): Promise<User> {
+    console.log(`Simulating sign-in for token (user UID): ${token}. Creating a new local anonymous session.`);
     return createAnonymousUser();
 }
 
-
-export async function logOut() {
-    return signOut(auth);
-}
-
-export { auth };
+// Mock the 'auth' object export if other files import it.
+// It doesn't need any properties for our local implementation.
+export const auth = {};

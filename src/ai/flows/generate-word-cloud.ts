@@ -1,74 +1,54 @@
-
 'use server';
 /**
- * @fileOverview A Genkit flow to analyze text and generate word cloud data.
- *
- * - generateWordCloudData: A function that takes an array of strings and returns words with their frequencies.
- * - GenerateWordCloudInput - The input type for the flow.
- * - GenerateWordCloudOutput - The return type for the flow.
+ * @fileOverview Generates word cloud data from text using a frequency counting library.
  */
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+// Correctly import the function from the library
+import { allFrequencyCount } from 'word-frequency-counter';
 
 // Define Zod schemas for input and output
-const GenerateWordCloudInputSchema = z.object({
-  checkInContents: z.array(z.string()).describe('An array of user check-in texts to be analyzed.'),
+const WordCloudInputSchema = z.object({
+  texts: z.array(z.string()).describe('An array of texts to analyze.'),
 });
-export type GenerateWordCloudDataInput = z.infer<typeof GenerateWordCloudInputSchema>;
+export type WordCloudInput = z.infer<typeof WordCloudInputSchema>;
 
-const GenerateWordCloudOutputSchema = z.object({
-    words: z.array(z.object({
-        text: z.string().describe('The identified word or phrase.'),
-        value: z.number().describe('The frequency or weight of the word.'),
-    })).describe('An array of objects, each representing a word and its frequency for the word cloud.'),
+const WordCloudOutputSchema = z.object({
+  words: z.array(z.object({
+    text: z.string(),
+    value: z.number(),
+  })).describe('An array of objects, each with a word and its frequency or weight.'),
 });
-export type GenerateWordCloudDataOutput = z.infer<typeof GenerateWordCloudOutputSchema>;
+export type WordCloudOutput = z.infer<typeof WordCloudOutputSchema>;
 
-// Define the exported wrapper function
-export async function generateWordCloudData(input: GenerateWordCloudDataInput): Promise<GenerateWordCloudDataOutput> {
-  return generateWordCloudFlow(input);
-}
+// A simple list of common Chinese and English stop words to filter out.
+const stopWords = new Set([
+    '的', '了', '是', '我', '你', '他', '她', '它', '我们', '你们', '他们',
+    '这', '那', '一个', '也', '在', '有', '就', '不', '都', '还', '说', '很', '但',
+    'the', 'a', 'an', 'and', 'is', 'it', 'in', 'i', 'to', 'of', 'for', 'on', 'with', 'that', 'this'
+]);
 
-// Define the Genkit prompt
-const wordCloudPrompt = ai.definePrompt({
-  name: 'wordCloudPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: { schema: GenerateWordCloudInputSchema },
-  output: { schema: GenerateWordCloudOutputSchema },
-  prompt: `
-    You are an expert in text analysis and data visualization.
-    Your task is to analyze the provided array of user check-in texts and generate a list of keywords or phrases along with their frequencies.
-    
-    Instructions:
-    1.  Combine all texts into a single corpus.
-    2.  Identify the most meaningful and frequently occurring words or short phrases (2-3 words).
-    3.  Ignore common stop words (e.g., "的", "了", "是", "我", "你").
-    4.  Calculate the frequency of each identified term.
-    5.  Return a list of the top 20-30 terms, formatted according to the output schema.
-    6.  The 'value' should be the raw frequency count of the 'text'.
-    7.  The language of the texts is primarily Chinese.
 
-    User check-in contents:
-    {{#each checkInContents}}
-    - {{{this}}}
-    {{/each}}
-  `,
-});
-
-// Define the Genkit flow
-const generateWordCloudFlow = ai.defineFlow(
-  {
-    name: 'generateWordCloudFlow',
-    inputSchema: GenerateWordCloudInputSchema,
-    outputSchema: GenerateWordCloudOutputSchema,
-  },
-  async (input) => {
-    // If there are no contents, return an empty array to avoid calling the model unnecessarily.
-    if (input.checkInContents.length === 0) {
-        return { words: [] };
-    }
-    
-    const { output } = await wordCloudPrompt(input);
-    return output!;
+/**
+ * Generates word cloud data by counting word frequencies in the provided texts.
+ * @param input - An object containing an array of texts.
+ * @returns A promise that resolves to an object containing the word cloud data.
+ */
+export async function generateWordCloud(input: WordCloudInput): Promise<WordCloudOutput> {
+  if (!input.texts || input.texts.length === 0) {
+    return { words: [] };
   }
-);
+
+  const combinedText = input.texts.join(' ');
+
+  // Use the library to get word frequencies. The result is a Map.
+  const frequencies: Map<string, number> = allFrequencyCount(combinedText);
+
+  // Convert the Map to an array, filter out stop words, and format the data.
+  const words = Array.from(frequencies.entries())
+    .filter(([text, value]) => !stopWords.has(text.toLowerCase()) && text.length > 1 && value > 1)
+    .map(([text, value]) => ({ text, value: value * 10 })) // Multiply value for better visualization
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 50);
+
+  return { words };
+}

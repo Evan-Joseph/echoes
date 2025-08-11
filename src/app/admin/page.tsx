@@ -21,6 +21,7 @@ import { getUserTitle } from '@/lib/titles';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AiConfigForm } from '@/components/admin/ai-config-form';
 
 interface AdminStats {
   userCheckInCounts: Record<string, number>;
@@ -63,12 +64,12 @@ function ReportComments({ checkInId }: { checkInId: string }) {
                         {comments.length > 0 ? comments.map(comment => (
                              <div key={comment.id} className="flex items-start gap-3 text-sm">
                                 <Avatar className="h-6 w-6">
-                                    <AvatarImage src={comment.author?.photoURL} alt={comment.author?.displayName} />
+                                    <AvatarImage src={comment.author?.photoURL || undefined} alt={comment.author?.displayName || '用户'} />
                                     <AvatarFallback>{comment.author?.displayName?.charAt(0) || '?'}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1">
                                     <div className="flex items-baseline gap-2">
-                                        <p className="font-semibold text-foreground">{comment.author?.displayName}</p>
+                                        <p className="font-semibold text-foreground">{comment.author?.displayName || '匿名用户'}</p>
                                         <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true, locale: zhCN })}</p>
                                     </div>
                                     <p className="text-foreground/90 whitespace-pre-wrap">{comment.content}</p>
@@ -124,7 +125,7 @@ function ActivityModerationTab() {
                                 <h3 className="font-semibold">{activity.title}</h3>
                                 <div className="text-sm text-muted-foreground mt-1">{activity.description}</div>
                                 <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                                    <div>发起人: {activity.author.displayName}</div>
+                                    <div>发起人: {activity.author.displayName || '匿名用户'}</div>
                                     <div>分类: <Badge variant="outline">{activity.category}</Badge></div>
                                     <div>申请时间: {format(new Date(activity.createdAt), 'PPP p', { locale: zhCN })}</div>
                                 </div>
@@ -287,9 +288,10 @@ export default function AdminPage() {
         </header>
         <main className="container mx-auto max-w-7xl p-4">
             <Tabs defaultValue="reports">
-                <TabsList className="grid w-full grid-cols-4 max-w-lg mx-auto">
+                <TabsList className="grid w-full grid-cols-5 max-w-2xl mx-auto">
                     <TabsTrigger value="reports">内容举报</TabsTrigger>
                     <TabsTrigger value="activities">活动审核</TabsTrigger>
+                    <TabsTrigger value="ai-config">AI 配置</TabsTrigger>
                     <TabsTrigger value="feed">全局动态</TabsTrigger>
                     <TabsTrigger value="users">用户管理</TabsTrigger>
                 </TabsList>
@@ -311,10 +313,10 @@ export default function AdminPage() {
                                             <div className="bg-muted p-3 rounded-md">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Avatar className="h-6 w-6">
-                                                        <AvatarImage src={author?.photoURL} />
-                                                        <AvatarFallback>{author?.displayName?.charAt(0)}</AvatarFallback>
+                                                        <AvatarImage src={author?.photoURL || undefined} />
+                                                        <AvatarFallback>{author?.displayName?.charAt(0) || '?'}</AvatarFallback>
                                                     </Avatar>
-                                                    <span className="text-sm font-medium">{author?.displayName}</span>
+                                                    <span className="text-sm font-medium">{author?.displayName || '匿名用户'}</span>
                                                 </div>
                                                 <p className="text-sm">{checkIn.content}</p>
                                                 {checkIn.photoUrl && <Image src={checkIn.photoUrl} width={150} height={150} alt="Reported content" className="rounded-md mt-2" data-ai-hint="user content"/>}
@@ -324,7 +326,7 @@ export default function AdminPage() {
                                         <div className="flex-1">
                                             <p className="font-semibold mb-2">举报信息:</p>
                                              <div className="text-sm space-y-2 text-muted-foreground">
-                                                <p>举报人: {reporter.displayName} ({reporter.uid})</p>
+                                                <p>举报人: {reporter.displayName || '匿名用户'} ({reporter.uid})</p>
                                                 <p>举报时间: {format(new Date(report.createdAt), 'PPP p', { locale: zhCN })}</p>
                                              </div>
                                              <div className="flex gap-2 mt-4">
@@ -348,6 +350,10 @@ export default function AdminPage() {
 
                 <TabsContent value="activities">
                     <ActivityModerationTab />
+                </TabsContent>
+
+                <TabsContent value="ai-config">
+                    <AiConfigForm />
                 </TabsContent>
                 
                 <TabsContent value="feed">
@@ -377,8 +383,8 @@ export default function AdminPage() {
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Avatar className="h-8 w-8">
-                                                            <AvatarImage src={author?.photoURL} />
-                                                            <AvatarFallback>{author?.displayName?.charAt(0)}</AvatarFallback>
+                                                            <AvatarImage src={author?.photoURL || undefined} />
+                                                            <AvatarFallback>{author?.displayName?.charAt(0) || '?'}</AvatarFallback>
                                                         </Avatar>
                                                         <span className="font-medium truncate max-w-24">{author?.displayName || '未知用户'}</span>
                                                     </div>
@@ -433,11 +439,11 @@ export default function AdminPage() {
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Avatar className="h-8 w-8">
-                                                            <AvatarImage src={u.photoURL} />
-                                                            <AvatarFallback>{u.displayName?.charAt(0)}</AvatarFallback>
+                                                            <AvatarImage src={u.photoURL || undefined} />
+                                                            <AvatarFallback>{u.displayName?.charAt(0) || '?'}</AvatarFallback>
                                                         </Avatar>
                                                         <div>
-                                                            <div className="font-medium">{u.displayName}</div>
+                                                            <div className="font-medium">{u.displayName || '匿名用户'}</div>
                                                             <div className="text-xs text-muted-foreground font-mono">{u.uid}</div>
                                                         </div>
                                                     </div>

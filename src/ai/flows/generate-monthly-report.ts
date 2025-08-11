@@ -1,14 +1,9 @@
-
 'use server';
 /**
- * @fileOverview A Genkit flow to generate a user's monthly growth report.
- *
- * - generateMonthlyReport: A function that analyzes check-ins and creates a report.
- * - GenerateMonthlyReportInput - The input type for the flow.
- * - GenerateMonthlyReportOutput - The return type for the flow.
+ * @fileOverview An AI flow to generate a user's monthly growth report by calling an OpenAI-compatible API.
  */
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { getAiConfig } from '@/lib/ai-config';
 
 // Define Zod schemas for input and output
 const GenerateMonthlyReportInputSchema = z.object({
@@ -24,53 +19,61 @@ const GenerateMonthlyReportOutputSchema = z.object({
 });
 export type GenerateMonthlyReportOutput = z.infer<typeof GenerateMonthlyReportOutputSchema>;
 
-// Define the exported wrapper function
+
 export async function generateMonthlyReport(input: GenerateMonthlyReportInput): Promise<GenerateMonthlyReportOutput> {
-  return generateMonthlyReportFlow(input);
-}
-
-// Define the Genkit prompt
-const monthlyReportPrompt = ai.definePrompt({
-  name: 'generateMonthlyReportPrompt',
-  model: 'googleai/gemini-2.0-flash',
-  input: { schema: GenerateMonthlyReportInputSchema },
-  output: { schema: GenerateMonthlyReportOutputSchema },
-  prompt: `
-    You are "回响 (Echoes)", a deeply insightful and empathetic AI growth partner.
-    Your task is to analyze the user's check-in journal entries from the past month and generate a personalized, encouraging, and actionable growth report.
-    The response must be in Chinese.
-
-    Instructions:
-    1.  **Summary**: Read all the check-in entries. Write a warm, cohesive one-paragraph summary. Identify recurring themes (e.g., mindfulness, learning a new skill, managing stress) and the general emotional tone. Avoid simply listing topics; weave them into a narrative about their month.
-    2.  **Highlights**: Carefully select exactly 3 of the most positive, insightful, or significant check-in entries. These should be moments of achievement, gratitude, or self-awareness. Return these as direct, verbatim quotes in the 'highlights' array. Do not alter the user's original words.
-    3.  **Suggestions**: Based on the user's entries, provide exactly 2 gentle, actionable, and forward-looking suggestions. Frame them as supportive ideas, not commands. For example, if they mention creative blocks, suggest trying a new medium. If they mention enjoying nature, suggest scheduling a weekly walk.
-    
-    {{#if previousReportSummary}}
-    **Continuity Context**: For reference, here is the summary from the user's previous monthly report. Use this to understand their ongoing journey and avoid making repetitive suggestions.
-    Previous Summary: "{{previousReportSummary}}"
-    {{/if}}
-
-    User's check-in entries for the month:
-    {{#each checkInContents}}
-    - "{{{this}}}"
-    {{/each}}
-  `,
-});
-
-// Define the Genkit flow
-const generateMonthlyReportFlow = ai.defineFlow(
-  {
-    name: 'generateMonthlyReportFlow',
-    inputSchema: GenerateMonthlyReportInputSchema,
-    outputSchema: GenerateMonthlyReportOutputSchema,
-  },
-  async (input) => {
-    // If there are not enough contents, return a default or empty state to avoid low-quality AI output.
-    if (input.checkInContents.length < 3) {
-        throw new Error("Not enough data for a meaningful report.");
-    }
-    
-    const { output } = await monthlyReportPrompt(input);
-    return output!;
+  if (input.checkInContents.length < 3) {
+      throw new Error("Not enough data for a meaningful report.");
   }
-);
+
+  // Get AI configuration
+  const aiConfig = await getAiConfig();
+  const { apiKey, baseUrl } = aiConfig.apiConfig;
+  const { model, systemPrompt } = aiConfig.monthlyReport;
+
+  if (!apiKey) {
+    throw new Error("AI API Key is not configured.");
+  }
+
+  // Construct the user prompt
+  let userPrompt = "User's check-in entries for the month:\n";
+  input.checkInContents.forEach(content => {
+      userPrompt += `- "${content}"\n`;
+  });
+
+  if (input.previousReportSummary) {
+      userPrompt += `\n**Continuity Context**: For reference, here is the summary from the user's previous monthly report. Use this to understand their ongoing journey and avoid making repetitive suggestions.\nPrevious Summary: "${input.previousReportSummary}"`;
+  }
+
+  const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+  ];
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+          model: model,
+          messages: messages,
+          response_format: { type: "json_object" },
+      }),
+  });
+
+  if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`API call failed with status ${response.status}: ${errorBody}`);
+  }
+
+  const jsonResponse = await response.json();
+  const content = jsonResponse.choices[0]?.message?.content;
+
+  if (!content) {
+    throw new Error("AI did not return any content.");
+  }
+
+  const parsedOutput = JSON.parse(content);
+  return GenerateMonthlyReportOutputSchema.parse(parsedOutput);
+}

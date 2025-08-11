@@ -1,15 +1,15 @@
-
 'use client';
 
 import * as React from 'react';
-import { type User } from 'firebase/auth';
-import { auth, logOut as firebaseLogout, getCurrentUser } from '@/lib/firebase/auth';
-import { onAuthStateChanged } from 'firebase/auth';
+// Import our own User type and auth functions
+import { type User, logOut as firebaseLogout, getCurrentUser } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
+    // Add setUser for manual updates after login/signup
+    setUser: (user: User | null) => void;
     logout: () => void;
 }
 
@@ -21,14 +21,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
 
     React.useEffect(() => {
-        // This listener will update the user state whenever Firebase auth state changes.
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUser(user);
-            setIsLoading(false);
-        });
+        // In our local version, we don't have a real-time listener.
+        // We just check for the user in localStorage once on initial load.
+        const checkUser = async () => {
+            try {
+                const currentUser = await getCurrentUser();
+                setUser(currentUser);
+            } catch (error) {
+                console.error("Failed to get current user:", error);
+                setUser(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-        // Cleanup subscription on unmount
-        return () => unsubscribe();
+        checkUser();
     }, []);
 
     const logout = async () => {
@@ -38,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, logout }}>
+        <AuthContext.Provider value={{ user, isLoading, logout, setUser }}>
             {children}
         </AuthContext.Provider>
     );

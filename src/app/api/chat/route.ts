@@ -1,13 +1,11 @@
-
 'use server';
 
-import { z } from "genkit";
-import { ai } from "@/ai/genkit";
 import { NextRequest, NextResponse } from "next/server";
-import { Message } from "@/lib/types";
+import { z } from 'zod';
+import type { Message } from "@/lib/types";
+import { getAiConfig } from "@/lib/ai-config";
 
-// Define the structured output schema for our AI responses.
-// This is the "communication protocol" between the AI and our frontend.
+// Define the structured output schema to maintain compatibility with the frontend.
 const MainChatOutputSchema = z.object({
   responseType: z.enum(['text', 'tool_use', 'fallback'])
     .describe('The type of response. Use "text" for conversation, "tool_use" for functions, and "fallback" if unsure.'),
@@ -20,70 +18,68 @@ const MainChatOutputSchema = z.object({
 export type MainChatOutput = z.infer<typeof MainChatOutputSchema>;
 
 
-// Define the main system prompt for the AI Router.
-// This prompt strictly commands the AI to act as a JSON-based router.
-const routerSystemPrompt = `You are "回响 (Echoes)", an AI assistant. Your primary job is to act as a function router based on the user's prompt.
-
-You MUST respond in a valid JSON format that adheres to the provided schema.
-
-- If the user's intent matches one of the available tools, set 'responseType' to 'tool_use' and specify the 'tool.name'.
-- If the user's intent is conversational (e.g., a greeting, a question, a general statement), set 'responseType' to 'text' and provide a conversational reply in the 'text' field.
-- If you are absolutely unsure, set 'responseType' to 'fallback'.
-- NEVER generate a text reply if you are calling a tool.
-
-Available Tools:
-- 'check_in': User wants to "打卡" (check in), "记录" (record), or "写点东西" (write something).
-- 'query_activity': User wants to find "活动" (activities) or asks "有什么可以做的" (what is there to do).
-- 'query_community': User wants to visit the "社群广场" (community square) or see what others are talking about.
-- 'query_profile': User wants to see their "个人中心" (profile), "成长档案" (growth file), or "我的记录" (my records).
-
-Your response must be in Chinese.
-`;
-
-
-// Standard Next.js API Route handler
+/**
+ * An API route that calls an OpenAI-compatible API to act as a chat router.
+ * It now uses the centralized AI config service.
+ */
 export async function POST(req: NextRequest) {
   try {
     const { prompt, history } = await req.json();
 
-    // Reconstruct messages for the AI model, including history.
-    const messages: any[] = history.map((msg: Message) => ({
-      role: msg.role === 'ai' ? 'model' : msg.role,
-      content: [{ text: typeof msg.content === 'string' ? msg.content : `[UI Component]` }]
-    }));
-    messages.push({ role: 'user', content: [{ text: prompt }] });
+    // Get AI configuration
+    const aiConfig = await getAiConfig();
+    const { apiKey, baseUrl } = aiConfig.apiConfig;
+    const { model, systemPrompt } = aiConfig.chatRouter;
 
-    const response = await ai.generate({
-      model: 'googleai/gemini-2.0-flash',
-      system: routerSystemPrompt,
-      messages: messages, // Send the full conversation history
-      output: {
-          schema: MainChatOutputSchema,
-      }
+    if (!apiKey) {
+      throw new Error("AI API Key is not configured.");
+    }
+
+    // Construct the messages array for the OpenAI API
+    const messages = [
+        { role: "system", content: systemPrompt },
+        ...(history || []).map((msg: Message) => ({
+            role: msg.role === 'ai' ? 'assistant' : 'user',
+            content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+        })),
+        { role: "user", content: prompt }
+    ];
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: messages,
+            response_format: { type: "json_object" },
+        }),
     });
 
-    const output = response.output;
-
-    if (!output) {
-      throw new Error("AI did not return a valid structured response.");
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`API call failed with status ${response.status}: ${errorBody}`);
     }
-    
-    return NextResponse.json(output);
 
+    const jsonResponse = await response.json();
+    const content = jsonResponse.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("AI did not return any content.");
+    }
+
+    const parsedOutput = JSON.parse(content);
+    const validatedOutput = MainChatOutputSchema.parse(parsedOutput);
+
+    return NextResponse.json(validatedOutput);
 
   } catch (err: any) {
     console.error("[API Route Error]", err);
     return NextResponse.json(
-      {
-        error: {
-          message: err.message || "An unknown error occurred.",
-          stack: err.stack,
-          cause: err.cause,
-        },
-      },
-      {
-        status: 500
-      }
+      { error: { message: err.message || "An unknown error occurred." } },
+      { status: 500 }
     );
   }
 }

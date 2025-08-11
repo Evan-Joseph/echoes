@@ -624,8 +624,8 @@ export default function ProfilePage() {
                             <CardHeader className="items-center text-center">
                                 <div className="relative group">
                                     <Avatar className="h-24 w-24 border-2 border-transparent group-hover:border-primary transition-all">
-                                        <AvatarImage src={userProfile.photoURL} alt={userProfile.displayName} />
-                                        <AvatarFallback>{userProfile.displayName.charAt(0) || '旅'}</AvatarFallback>
+                                        <AvatarImage src={userProfile.photoURL || undefined} alt={userProfile.displayName || '用户'} />
+                                        <AvatarFallback>{userProfile.displayName?.charAt(0) || '旅'}</AvatarFallback>
                                     </Avatar>
                                     <Button
                                         variant="outline"
@@ -637,7 +637,7 @@ export default function ProfilePage() {
                                     </Button>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <CardTitle className="mt-4 text-2xl">{userProfile.displayName}</CardTitle>
+                                    <CardTitle className="mt-4 text-2xl">{userProfile.displayName || '匿名用户'}</CardTitle>
                                     <Button variant="ghost" size="icon" className="mt-4 h-6 w-6" onClick={() => setIsEditDialogOpen(true)}>
                                         <Edit className="h-4 w-4" />
                                     </Button>

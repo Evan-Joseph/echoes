@@ -117,12 +117,12 @@ function CommentSection({ checkInId, currentUser }: { checkInId: string, current
                 {!isLoading && comments.map(({id, author, content, createdAt}) => (
                     <div key={id} className="flex items-start gap-3 text-sm">
                         <Avatar className="h-8 w-8">
-                            <AvatarImage src={author?.photoURL} alt={author?.displayName} />
+                            <AvatarImage src={author?.photoURL || undefined} alt={author?.displayName || '用户'} />
                             <AvatarFallback>{author?.displayName?.charAt(0) || '?'}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                             <div className="flex items-baseline gap-2">
-                                <p className="font-semibold text-foreground">{author?.displayName}</p>
+                                <p className="font-semibold text-foreground">{author?.displayName || '匿名用户'}</p>
                                 <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(createdAt), { addSuffix: true, locale: zhCN })}</p>
                             </div>
                             <p className="text-foreground/90 whitespace-pre-wrap">{content}</p>
@@ -205,12 +205,12 @@ function PublicCheckInCard({ checkIn, author, authorCheckIns, currentUser }: Pub
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Avatar>
-                            <AvatarImage src={author.photoURL} alt={author.displayName} />
-                            <AvatarFallback>{author.displayName.charAt(0) || '匿'}</AvatarFallback>
+                            <AvatarImage src={author.photoURL || undefined} alt={author.displayName || '用户'} />
+                            <AvatarFallback>{author.displayName?.charAt(0) || '匿'}</AvatarFallback>
                         </Avatar>
                         <div>
                             <div className="flex items-center gap-2">
-                            <CardTitle className="text-base font-semibold text-foreground">{author.displayName}</CardTitle>
+                            <CardTitle className="text-base font-semibold text-foreground">{author.displayName || '匿名用户'}</CardTitle>
                             <Badge variant="secondary" className="font-normal text-xs">{authorTitle}</Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">{timeAgo}</p>

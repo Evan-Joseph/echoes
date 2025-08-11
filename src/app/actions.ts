@@ -1,11 +1,11 @@
 
 'use server';
 
-import { generateWordCloudData } from '@/ai/flows/generate-word-cloud';
+import { generateWordCloud } from '@/ai/flows/generate-word-cloud';
 import { generateAiComment } from '@/ai/flows/get-related-suggestions';
 import { generateSuggestions } from '@/ai/flows/generate-suggestions';
 import { generateMonthlyReport } from '@/ai/flows/generate-monthly-report';
-import { getPublicCheckIns, getUserCheckIns, likeCheckIn, unlikeCheckIn, deleteUserMessages, getUserProfile, updateUserProfile, makeCheckInPublic, makeCheckInPrivate, deleteCheckIn, addComment, getCommentsForCheckIn, getAllUsers, getAllCheckIns, getUserMessages, createReport, getPendingReports, getCheckInById, resolveReport, getApprovedActivities, createActivity, joinActivity, getPendingActivities, updateActivityStatus, getUserActivities, getActivityById, getCheckInsForActivity, updateCheckIn, leaveActivity, saveMonthlyReport, getMonthlyReport } from '@/lib/firebase/firestore';
+import { getPublicCheckIns, getUserCheckIns, likeCheckIn, unlikeCheckIn, deleteUserMessages, getUserProfile, updateUserProfile, makeCheckInPublic, makeCheckInPrivate, deleteCheckIn, addCheckIn, addComment, getCommentsForCheckIn, getAllUsers, getAllCheckIns, getUserMessages, createReport, getPendingReports, getCheckInById, resolveReport, getApprovedActivities, createActivity, joinActivity, getPendingActivities, updateActivityStatus, getUserActivities, getActivityById, getCheckInsForActivity, updateCheckIn, leaveActivity, saveMonthlyReport, getMonthlyReport } from '@/lib/firebase/firestore';
 import type { AppCheckIn, AppUser, CommentWithAuthor, Message, Report, Activity, ActivityWithAuthor, MonthlyReport } from '@/lib/types';
 
 
@@ -48,7 +48,7 @@ export async function likeCheckInAction(checkInId: string, userId: string): Prom
 export async function unlikeCheckInAction(checkInId: string, userId: string): Promise<{ success: boolean }> {
     try {
         await unlikeCheckIn(checkInId, userId);
-        return { success: false };
+        return { success: true };
     } catch (error) {
         console.error(`Failed to unlike check-in ${checkInId}:`, error);
         return { success: false };
@@ -90,8 +90,9 @@ export async function deleteCheckInAction(checkInId: string, userId: string): Pr
 }
 
 // Action for the word cloud generation flow
-export async function generateWordCloudDataAction(input: { checkInContents: string[] }) {
-    return await generateWordCloudData(input);
+export async function generateWordCloudAction(input: { checkInContents: string[] }) {
+    // The AI flow expects the property to be named 'texts'
+    return await generateWordCloud({ texts: input.checkInContents });
 }
 
 // Action for getting an AI comment
@@ -101,7 +102,8 @@ export async function generateAiCommentAction(input: { checkInContent: string; }
 
 // Action for getting AI-powered suggestions
 export async function generateSuggestionsAction() {
-    return await generateSuggestions();
+    // Provide a default context for the mocked function
+    return await generateSuggestions({ context: 'general' });
 }
 
 // Action for getting the monthly report
@@ -337,6 +339,28 @@ export async function getCheckInsForActivityAction(activityId: string): Promise<
 }
 
 // === Check-in Actions ===
+
+// This AppCheckInData is a bit redundant with the one in firestore.ts, but defining it here
+// makes the action's interface clear without circular dependencies.
+interface AppCheckInData {
+    userId: string;
+    content: string;
+    isPublic: boolean;
+    photoDataUri?: string;
+    activityId?: string;
+    activityTitle?: string;
+}
+
+export async function addCheckInAction(checkInData: AppCheckInData): Promise<{ success: boolean, checkInId?: string }> {
+    try {
+        const checkInId = await addCheckIn(checkInData);
+        return { success: true, checkInId };
+    } catch (error) {
+        console.error(`Failed to add check-in via action:`, error);
+        return { success: false };
+    }
+}
+
 export async function updateCheckInAction(
     checkInId: string, 
     userId: string, 
@@ -350,6 +374,24 @@ export async function updateCheckInAction(
         return { success: false };
     }
 }
+
+// === AI Config Actions ===
+import { getAiConfig, updateAiConfig, AiConfig } from '@/lib/ai-config';
+
+export async function getAiConfigAction(): Promise<AiConfig> {
+    return await getAiConfig();
+}
+
+export async function updateAiConfigAction(newConfig: AiConfig): Promise<{ success: boolean, message?: string }> {
+    try {
+        await updateAiConfig(newConfig);
+        return { success: true };
+    } catch (error: any) {
+        console.error('Failed to update AI config via action:', error);
+        return { success: false, message: error.message };
+    }
+}
+
 
 // === Monthly Report Actions ===
 export async function saveMonthlyReportAction(reportData: Omit<MonthlyReport, 'id' | 'createdAt'>): Promise<{ success: boolean, reportId?: string }> {
